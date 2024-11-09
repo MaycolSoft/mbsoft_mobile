@@ -7,7 +7,7 @@ interface StoreState {
   resetCount: () => void;
   
   accessToken: string | null;
-  setAccessToken: (token: string) => void;
+  setAccessToken: (token: string|null) => void;
   removeAccessToken: () => void;
 }
 
@@ -16,7 +16,7 @@ const useStore = create<StoreState>((set) => ({
   increaseCount: () => set((state) => ({ count: state.count + 1 })),
   resetCount: () => set({ count: 0 }),
 
-  setAccessToken: (token: string) => set({ accessToken: token }),
+  setAccessToken: (token) => set({ accessToken: token }),
   removeAccessToken: () => set({ accessToken: null }),
   accessToken: null,
 }));

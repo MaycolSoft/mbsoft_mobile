@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback } from 'react-native';
 import axios from 'axios';
 import useStore from '@/store/useStore';
 
@@ -9,10 +9,9 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
 
-  // const setAcc
-  // useStore
   const setAccessToken = useStore((state) => state.setAccessToken);
 
+  
   const handleLogin = async () => {
 
     setAccessToken("HOLA")
@@ -49,45 +48,56 @@ const LoginScreen = () => {
     }
   };
 
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Iniciar Sesión</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"} // Ajusta el comportamiento en iOS y Android
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Iniciar Sesión</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="ID de Empresa"
-        keyboardType="numeric"
-        value={idEmpresa}
-        onChangeText={setIdEmpresa}
-      />
+          <TextInput
+            style={styles.input}
+            placeholder="ID de Empresa"
+            placeholderTextColor="#888"
+            keyboardType="numeric"
+            value={idEmpresa}
+            onChangeText={setIdEmpresa}
+          />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Username o Email"
-        value={username}
-        onChangeText={setUsername}
-      />
+          <TextInput
+            style={styles.input}
+            placeholder="Username o Email"
+            placeholderTextColor="#888"
+            value={username}
+            onChangeText={setUsername}
+          />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+          <TextInput
+            style={styles.input}
+            placeholder="Contraseña"
+            placeholderTextColor="#888"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
-      <View style={styles.rememberContainer}>
-        <Text style={styles.rememberText}>Recordar</Text>
-        <TouchableOpacity
-          style={[styles.checkbox, remember ? styles.checkboxSelected : null]}
-          onPress={() => setRemember(!remember)}
-        />
-      </View>
+          <View style={styles.rememberContainer}>
+            <Text style={styles.rememberText}>Recordar</Text>
+            <TouchableOpacity
+              style={[styles.checkbox, remember ? styles.checkboxSelected : null]}
+              onPress={() => setRemember(!remember)}
+            />
+          </View>
 
-      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-        <Text style={styles.loginButtonText}>Ingresar</Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>Ingresar</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -105,12 +115,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   input: {
-    height: 50,
+    height: 40,
     borderColor: '#ddd',
     borderWidth: 1,
-    borderRadius: 5,
+    borderRadius: 12,
     paddingHorizontal: 10,
-    marginBottom: 15,
+    marginBottom: 10,
     backgroundColor: '#fff',
   },
   rememberContainer: {

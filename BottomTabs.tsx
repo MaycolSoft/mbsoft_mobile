@@ -1,9 +1,12 @@
 // BottomTabs.tsx
-import React from 'react';
+import React, {useEffect} from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { useNavigation } from '@react-navigation/native';
 import { Entypo, MaterialIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
+import useStore from '@/store/useStore';
 
-// Importa tus pantallas
+//////////////// Screens ////////////////
 import Home        from '@/screens/Home';
 import Portfolio   from '@/screens/Portfolio';
 import Prices      from '@/screens/Prices';
@@ -11,43 +14,63 @@ import Settings    from '@/screens/Settings';
 import Transaction from '@/screens/Transaction';
 import Login       from '@/screens/Login';
 import ProductListScreen from '@/screens/products/ProductListScreen';
+//////////////// Screens ////////////////
 
 
-import useStore from '@/store/useStore';
+const HomeScreen = () => {
+
+  const Drawer = createDrawerNavigator();
+
+  return (
+    <Drawer.Navigator>
+      <Drawer.Screen name="Home" component={Home} options={{ 
+        unmountOnBlur: true,
+        title: 'Home' ,
+        headerShown: false,
+        drawerIcon: ({ color, size }) => (
+          <Ionicons name="home-outline" color={color} size={size} />
+        ),
+      }} />
+    </Drawer.Navigator>
+  );
+
+}
+
+
+const Logout = () => {
+  const navigation = useNavigation();
+  const setAccessToken = useStore((state) => state.setAccessToken);
+
+  useEffect(() => {
+    // Limpia el accessToken y redirige al usuario al LoginScreen
+    setAccessToken(null);
+    // navigation.replace('Login'); // Reemplaza para evitar volver a las pestañas
+  }, []);
+
+  return null; // No renderiza nada ya que solo ejecuta la lógica de logout
+};
+
 
 const Tab = createBottomTabNavigator();
 
-const screenOptions = {
-  tabBarShowLabel: false,
-  headerShown: false,
-  tabBarStyle: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    left: 0,
-    elevation: 0,
-    height: 60,
-    backgroundColor: '#fff',
-  },
-};
-
 export default function BottomTabs() {
+
   
-  const count = useStore((state) => state.count);
  
   return (
     <Tab.Navigator 
     // screenOptions={screenOptions}
     >
       <Tab.Screen
-        name={"Home"}
-        component={Home}
+        name={"TabHome"}
+        component={HomeScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Entypo name="home" color={color} size={size} />
           ),
           headerShown: false,
           unmountOnBlur: true,
+          
         }}
       />
       <Tab.Screen
@@ -98,11 +121,11 @@ export default function BottomTabs() {
         }}
       />
       <Tab.Screen
-        name="Login"
-        component={Login}
+        name="Logout"
+        component={Logout}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="login" color={color} size={size} />
+            <MaterialIcons name="logout" color={color} size={size} />
           ),
         }}
       />

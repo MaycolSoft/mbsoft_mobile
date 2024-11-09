@@ -35,7 +35,7 @@ const ProductListScreen: React.FC = () => {
       const response = await axios.post('https://tu-api.com/pos/searchFilterProduct');
       setProducts(response.data.data);
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       Alert.alert("Error", "No se pudieron cargar los productos.");
     } finally {
       setLoading(false);
