@@ -11,9 +11,10 @@ import Home        from '@/screens/Home';
 import Portfolio   from '@/screens/Portfolio';
 import Prices      from '@/screens/Prices';
 import Settings    from '@/screens/Settings';
-import Transaction from '@/screens/Transaction';
+import LogScreen   from '@/components/LogScreen';
 import Login       from '@/screens/Login';
 import ProductListScreen from '@/screens/products/ProductListScreen';
+import ProductForm from '@/screens/products/ProductForm';
 //////////////// Screens ////////////////
 
 
@@ -74,8 +75,8 @@ export default function BottomTabs() {
         }}
       />
       <Tab.Screen
-        name="Portfolio"
-        component={Portfolio}
+        name="Product Form"
+        component={ProductForm}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="pie-chart" color={color} size={size} />
@@ -100,6 +101,8 @@ export default function BottomTabs() {
           tabBarIcon: ({ color, size }) => (
             <FontAwesome name="list" color={color} size={size} />
           ),
+          headerShown: false,
+          unmountOnBlur: true,
         }}
       />
       <Tab.Screen
@@ -112,12 +115,14 @@ export default function BottomTabs() {
         }}
       />
       <Tab.Screen
-        name="Transaction"
-        component={Transaction}
+        name="Log"
+        component={LogScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <FontAwesome name="exchange" color={color} size={size} />
+            <FontAwesome name="terminal" color={color} size={size} />
           ),
+          headerShown: false,
+          unmountOnBlur: true,
         }}
       />
       <Tab.Screen

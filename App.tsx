@@ -2,9 +2,11 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import BottomTabs from './BottomTabs';
+import BottomTabs from '@/BottomTabs';
 import Login from '@/screens/Login';
 import useStore from '@/store/useStore';
+import Toast from 'react-native-toast-message';
+
 
 export default function App() {
   const accessToken = useStore((state) => state.accessToken);
@@ -39,6 +41,7 @@ export default function App() {
             <Login />
           </Animated.View>
         )}
+        <Toast />
       </View>
     </NavigationContainer>
   );

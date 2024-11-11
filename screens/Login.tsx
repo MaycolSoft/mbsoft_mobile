@@ -1,87 +1,149 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback } from 'react-native';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { postRequest, isAxiosError } from '@/api/apiService';
 import useStore from '@/store/useStore';
+import TextInputField from '@/components/InputField';
+import Toast from 'react-native-toast-message';
 
 const LoginScreen = () => {
-  const [idEmpresa, setIdEmpresa] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [idEmpresa, setIdEmpresa] = useState('1001');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin');
   const [remember, setRemember] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const setAccessToken = useStore((state) => state.setAccessToken);
 
-  
-  const handleLogin = async () => {
-
-    setAccessToken("HOLA")
-    return
-    // Validación básica de campos
-    if (!idEmpresa || !username || !password) {
-      Alert.alert('Error', 'Por favor, complete todos los campos.');
-      return;
-    }
-
-    try {
-      // Datos para enviar al backend
-      const payload = {
-        id_empresa: parseInt(idEmpresa, 10),
-        username: username,
-        password: password,
-      };
-
-      // URL de tu backend
-      const url = 'https://laravel-modekaiser.koyeb.app/login';
-
-      const response = await axios.post(url, payload);
-
-      // Procesar respuesta del backend
-      if (response.status === 200) {
-        Alert.alert('Éxito', 'Inicio de sesión exitoso');
-        // Aquí podrías navegar a otra pantalla o guardar el token en AsyncStorage
-      } else {
-        Alert.alert('Error', 'Credenciales incorrectas');
+  // Función para cargar las credenciales guardadas (si existen)
+  useEffect(() => {
+    const loadCredentials = async () => {
+      try {
+        const savedIdEmpresa = await AsyncStorage.getItem('idEmpresa');
+        const savedUsername = await AsyncStorage.getItem('username');
+        const savedPassword = await AsyncStorage.getItem('password');
+        
+        if (savedIdEmpresa && savedUsername && savedPassword) {
+          setIdEmpresa(savedIdEmpresa);
+          setUsername(savedUsername);
+          setPassword(savedPassword);
+          setRemember(true); // Activa el switch de "Remember Me" si hay credenciales guardadas
+        }
+      } catch (error) {
+        console.error('Error loading saved credentials:', error);
       }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Ha ocurrido un error en el inicio de sesión');
+    };
+
+    loadCredentials();
+  }, []);
+
+  // Función para guardar credenciales en AsyncStorage
+  const saveCredentials = async () => {
+    if (remember) {
+      try {
+        await AsyncStorage.setItem('idEmpresa', idEmpresa);
+        await AsyncStorage.setItem('username', username);
+        await AsyncStorage.setItem('password', password);
+      } catch (error) {
+        console.error('Error saving credentials:', error);
+      }
     }
   };
 
+  // Función para borrar credenciales de AsyncStorage
+  const clearCredentials = async () => {
+    try {
+      await AsyncStorage.removeItem('idEmpresa');
+      await AsyncStorage.removeItem('username');
+      await AsyncStorage.removeItem('password');
+    } catch (error) {
+      console.error('Error clearing credentials:', error);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!idEmpresa || !username || !password) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Por favor, complete todos los campos.',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        id_empresa: parseInt(idEmpresa, 10),
+        email: username,
+        password: password,
+      };
+
+      const response = await postRequest("api/login", payload);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Éxito',
+        text2: 'Inicio de sesión exitoso',
+      });
+
+      setAccessToken(response.data.data.token);
+
+      if (remember) {
+        await saveCredentials(); // Guarda las credenciales si el usuario activó "Remember Me"
+      } else {
+        await clearCredentials(); // Borra las credenciales si "Remember Me" no está activo
+      }
+
+    } catch (error) {
+      if (isAxiosError(error)) {
+        Toast.show({
+          type: 'info',
+          text1: 'Warning',
+          text2: error.response?.data.message || 'Error en la respuesta del servidor',
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Ha ocurrido un error en el inicio de sesión',
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"} // Ajusta el comportamiento en iOS y Android
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
           <Text style={styles.title}>Iniciar Sesión</Text>
 
-          <TextInput
-            style={styles.input}
+          <TextInputField
             placeholder="ID de Empresa"
-            placeholderTextColor="#888"
             keyboardType="numeric"
             value={idEmpresa}
             onChangeText={setIdEmpresa}
+            editable={!loading}
           />
 
-          <TextInput
-            style={styles.input}
+          <TextInputField
             placeholder="Username o Email"
-            placeholderTextColor="#888"
             value={username}
             onChangeText={setUsername}
+            editable={!loading}
           />
 
-          <TextInput
-            style={styles.input}
+          <TextInputField
             placeholder="Contraseña"
-            placeholderTextColor="#888"
             secureTextEntry
             value={password}
             onChangeText={setPassword}
+            editable={!loading}
           />
 
           <View style={styles.rememberContainer}>
@@ -89,11 +151,20 @@ const LoginScreen = () => {
             <TouchableOpacity
               style={[styles.checkbox, remember ? styles.checkboxSelected : null]}
               onPress={() => setRemember(!remember)}
+              disabled={loading}
             />
           </View>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Ingresar</Text>
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Ingresar</Text>
+            )}
           </TouchableOpacity>
         </View>
       </TouchableWithoutFeedback>
@@ -113,15 +184,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
-  },
-  input: {
-    height: 40,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    backgroundColor: '#fff',
   },
   rememberContainer: {
     flexDirection: 'row',
@@ -146,6 +208,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#007bff',
     paddingVertical: 15,
     borderRadius: 5,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#cccccc',
   },
   loginButtonText: {
     color: '#fff',

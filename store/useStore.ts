@@ -21,4 +21,29 @@ const useStore = create<StoreState>((set) => ({
   accessToken: null,
 }));
 
+//////////////////// LOGS ////////////////////
+interface LogEntry {
+  method: string;
+  url: string;
+  data?: any;
+  params?: any;
+  timestamp: Date;
+}
+
+interface LogStore {
+  logs: LogEntry[];
+  addLog: (log: LogEntry) => void;
+}
+
+export const useLogStore = create<LogStore>((set) => ({
+  logs: [],
+  addLog: (log) =>
+    set((state) => ({
+      logs: [...state.logs, log],
+    })),
+}));
+//////////////////// LOGS ////////////////////
+
+
+
 export default useStore;

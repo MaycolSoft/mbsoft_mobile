@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  Button,
   Alert,
   ActivityIndicator,
   StyleSheet,
@@ -11,21 +9,16 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import axios from 'axios';
+import Toast from 'react-native-toast-message';
+import {postRequest, getRequest, isAxiosError} from '@/api/apiService';
+import Dropdown from '@/components/Dropdown';
+import Button from '@/components/Button';
+import TextInputField from '@/components/InputField';
 
-// types.ts o models.ts
-export interface Product {
-  id?: number;               // Opcional, porque puede no estar presente para productos nuevos
-  reference: string;
-  description: string;
-  sale_price: number;
-  costo_price: number;
-  id_categoria: string;      // ID de la categoría
-  id_unidad: string;         // ID de la unidad
-  id_tax: string;            // ID del impuesto
-  tax_include: boolean;
-  status: boolean;
+
+interface Product {
+  id?: number;
+  [key:string]: any;
 }
 
 interface ProductFormProps {
@@ -35,11 +28,11 @@ interface ProductFormProps {
 }
 
 interface Option {
-  id: string;
-  description: string;
+  [key: string]: any;
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSave }) => {
+const ProductForm: React.FC<ProductFormProps> = ({ product, onClose=()=>{}, onSave=()=>{} }) => {
+
   const [formData, setFormData] = useState({
     reference: '',
     description: '',
@@ -56,6 +49,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSave }) =
   const [unidades, setUnidades] = useState<Option[]>([]);
   const [taxes, setTaxes] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
+  const defaultList = [
+    { value: '0', label: 'Opcion # 0' },
+    { value: '1', label: 'Opcion # 1' },
+    { value: '2', label: 'Opcion # 2' },
+  ];
 
   useEffect(() => {
     fetchOptions();
@@ -63,14 +61,34 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSave }) =
 
   const fetchOptions = async () => {
     try {
-      const response = await axios.get('/pos/getCategoriaUnidadesTax');
-      setCategorias(response.data.data.categoria);
-      setUnidades(response.data.data.unidad);
-      setTaxes(response.data.data.tax);
+      const response = await getRequest('api/pos/getCategoriaUnidadesTax');
+      // LOG  {"categoria": [{"created_at": "2024-11-10T16:21:08.000000Z", "deleted_at": null, "description": "e", "id": 6, "id_empresa": 1001, "status": true, "updated_at": "2024-11-10T16:21:08.000000Z"}], "tax": [{"created_at": "2024-11-10T16:21:35.000000Z", "deleted_at": null, "description": "el 11 porcietno", "id": 5, "id_empresa": 1001, "porciento_tax": "11.00%", "status": true, "tax": "0.11", "updated_at": "2024-11-10T16:21:35.000000Z"}], "unidad": [{"created_at": "2024-11-10T16:21:21.000000Z", "deleted_at": null, "description": "qwe", "id": 6, "id_empresa": 1001, "sigla": "e", "status": true, "updated_at": "2024-11-10T16:21:21.000000Z", "venta_decimal": false}]}
+      // setCategorias(response.data.data.categoria);
+      // setUnidades(response.data.data.unidad);
+      // setTaxes(response.data.data.tax);
+      console.log(response.data.data);
+      
     } catch (error) {
-      setCategorias([{ id: '0', description: 'No se pudieron cargar las categorías' }]);
-      setUnidades([{ id: '0', description: 'No se pudieron cargar las unidades' }]);
-      setTaxes([{ id: '0', description: 'No se pudieron cargar los impuestos' }]);
+
+      if (isAxiosError(error)) {
+        console.log(error.response?.data);
+        
+        Toast.show({
+          type: 'info',
+          text1: 'Warning',
+          text2: error.response?.data.message || 'Error en la respuesta del servidor',
+        })
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Ha ocurrido un error al cargar los productos',
+        });
+      }
+      
+      setCategorias(defaultList);
+      setUnidades(defaultList);
+      setTaxes(defaultList);
     }
   };
 
@@ -81,8 +99,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSave }) =
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      await axios.post('/productos/updateOrCreateProduct', formData);
-      Alert.alert('Éxito', 'Producto guardado correctamente.');
+      await postRequest('/productos/updateOrCreateProduct', formData);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Producto guardado correctamente',
+      });
       onSave();
       onClose();
     } catch (error) {
@@ -92,101 +114,55 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onClose, onSave }) =
     }
   };
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.outerContainer}>
-        <View style={styles.cardContainer}>
-          <Text style={styles.title}>Formulario de Producto</Text>
 
-          {/* Campos de Texto Básicos en una Fila Completa */}
-          <TextInput
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
+      <ScrollView contentContainerStyle={styles.outerContainer}>
+        <View style={ styles.cardContainer }>
+
+          <TextInputField
             placeholder="Referencia"
             value={formData.reference}
             onChangeText={(text) => handleChange('reference', text)}
-            style={styles.input}
+            // style={styles.input}
           />
-          <TextInput
+          <TextInputField
             placeholder="Descripción"
             value={formData.description}
             onChangeText={(text) => handleChange('description', text)}
-            style={styles.input}
+            // style={styles.input}
           />
 
-          {/* Diseño en Dos Columnas para Costo y Precio */}
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <TextInput
-                placeholder="Costo"
-                value={formData.costo}
-                onChangeText={(text) => handleChange('costo', text)}
-                style={styles.input}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.column}>
-              <TextInput
-                placeholder="Precio"
-                value={formData.precio}
-                onChangeText={(text) => handleChange('precio', text)}
-                style={styles.input}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          {/* Diseño en Dos Columnas para Categoría y Unidad */}
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Categoría</Text>
-              <Picker
-                selectedValue={formData.categoria}
-                onValueChange={(value) => handleChange('categoria', value)}
-                style={styles.picker}
-              >
-                {categorias.length === 0 ? (
-                  <Picker.Item label="No se pudieron cargar las categorías" value="0" />
-                ) : (
-                  categorias.map((categoria) => (
-                    <Picker.Item key={categoria.id} label={categoria.description} value={categoria.id} />
-                  ))
-                )}
-              </Picker>
-            </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Unidad</Text>
-              <Picker
-                selectedValue={formData.unidad}
-                onValueChange={(value) => handleChange('unidad', value)}
-                style={styles.picker}
-              >
-                {unidades.length === 0 ? (
-                  <Picker.Item label="No se pudieron cargar las unidades" value="0" />
-                ) : (
-                  unidades.map((unidad) => (
-                    <Picker.Item key={unidad.id} label={unidad.description} value={unidad.id} />
-                  ))
-                )}
-              </Picker>
-            </View>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <Button title={loading ? 'Guardando...' : 'Guardar Producto'} onPress={handleSubmit} disabled={loading} />
-            <Button title="Cancelar" onPress={onClose} color="red" />
-          </View>
-          {loading && <ActivityIndicator size="large" color="#0000ff" />}
         </View>
       </ScrollView>
+      
+      {/* Contenedor de botones en la parte inferior de la pantalla */}
+      <View style={
+        styles.footer
+        }>
+        <Button
+          title={loading ? 'Guardando...' : 'Guardar Producto'}
+          onPress={handleSubmit}
+          disabled={loading}
+          loading={loading}
+        />
+        <Button
+          title="Cancelar"
+          onPress={onClose}
+          color="red"
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  
   outerContainer: {
     padding: 20,
     flexGrow: 1,
-    backgroundColor: '#f0f0f0',  // Color de fondo para resaltar la "tarjeta"
+    backgroundColor: '#f0f0f0',
   },
   cardContainer: {
     backgroundColor: 'white',
@@ -198,7 +174,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 5, // Para sombra en Android
+    elevation: 5,
   },
   title: {
     fontSize: 24,
@@ -223,19 +199,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   column: {
-    width: '48%', // Ocupa casi la mitad del ancho disponible
+    width: '48%',
   },
-  picker: {
-    backgroundColor: '#fafafa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    marginBottom: 15,
-  },
-  buttonContainer: {
-    marginTop: 15,
+  footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    padding: 15,
+    backgroundColor: '#fff',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
   },
 });
 
