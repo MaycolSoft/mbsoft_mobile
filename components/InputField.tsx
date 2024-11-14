@@ -13,12 +13,13 @@ const TextInputField = (props:TextInputFieldInterface) => {
         value,
         onChangeText = ()=>{},
         placeholder,
+        style={},
         ...otherProps
     } = props
 
     return (
         <TextInput
-        style={styles.input}
+        style={[styles.input, {...style}]}
         placeholder={placeholder}
         placeholderTextColor="#888"
         value={value}

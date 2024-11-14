@@ -6,6 +6,7 @@ import useStore from '@/store/useStore';
 import TextInputField from '@/components/InputField';
 import Toast from 'react-native-toast-message';
 
+
 const LoginScreen = () => {
   const [idEmpresa, setIdEmpresa] = useState('1001');
   const [username, setUsername] = useState('admin');
@@ -154,6 +155,7 @@ const LoginScreen = () => {
               disabled={loading}
             />
           </View>
+
 
           <TouchableOpacity
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}

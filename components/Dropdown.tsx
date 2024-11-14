@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons'; // Asegúrate de instalar esta librería para los íconos
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Dimensions } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Portal } from 'react-native-paper';
 
 interface Options {
   label: string;
-  value: string;
+  value: string | number;
   [key: string]: any;
 }
 
@@ -12,14 +13,21 @@ interface DropdownProps {
   options: Options[];
   onSelect?: (option: Options) => void;
   style?: ViewStyle;
-  iconMode?: boolean; // Nueva prop para el modo ícono
+  iconMode?: boolean;
+  label?: string;
 }
 
-const Dropdown: React.FC<DropdownProps> = ({ options, onSelect = () => {}, style = {}, iconMode = false }) => {
+const Dropdown: React.FC<DropdownProps> = ({ 
+  label = "",
+  options,
+  onSelect = () => {},
+  style = {},
+  iconMode = false 
+}) => {
   const [visible, setVisible] = useState<boolean>(false);
   const [selectedOption, setSelectedOption] = useState<Options | null>(null);
-  const [openUpwards, setOpenUpwards] = useState(false);
   const dropdownRef = useRef<View>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const handleSelect = (option: Options) => {
     setSelectedOption(option);
@@ -30,54 +38,67 @@ const Dropdown: React.FC<DropdownProps> = ({ options, onSelect = () => {}, style
   const toggleDropdown = () => {
     if (dropdownRef.current) {
       dropdownRef.current.measure((fx, fy, width, height, px, py) => {
-        const screenHeight = 800;
-        setOpenUpwards(py + 200 > screenHeight);
+        const screenWidth = Dimensions.get('window').width;
+        const dropdownWidth = 200; // Ancho del dropdown
+        const isTooFarRight = px + dropdownWidth > screenWidth;
+        
+        // Calcula la posición horizontal y vertical del dropdown
+        setDropdownPosition({
+          top: py + height, // Aparece justo debajo del botón
+          left: isTooFarRight ? screenWidth - dropdownWidth - 10 : px, // Ajusta a la izquierda si se sale del borde derecho
+        });
+        
         setVisible(!visible);
       });
-    } else {
-      setVisible(!visible);
     }
   };
 
   return (
-    <View style={[style]} ref={dropdownRef}>
+    <View style={[styles.main, style]} ref={dropdownRef}>
       <TouchableOpacity onPress={toggleDropdown} style={iconMode ? styles.iconButton : styles.selectButton}>
         {iconMode ? (
           <MaterialIcons name="filter-list" size={24} color="black" />
         ) : (
-          <Text>{selectedOption?.label || 'Selecciona una opción'}</Text>
+          <Text>{selectedOption?.label || (label || 'Selecciona una opción')}</Text>
         )}
       </TouchableOpacity>
+
       {visible && (
-        <View style={[styles.dropdown, openUpwards ? { bottom: 30 } : { top: 30 }]}>
-          {options.map((option, index) => (
-            <TouchableOpacity key={index} onPress={() => handleSelect(option)} style={styles.option}>
-              <Text>{option?.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Portal>
+          <View style={[styles.dropdown, { top: dropdownPosition.top, left: dropdownPosition.left }]}>
+            {options.map((option, index) => (
+              <TouchableOpacity key={index} onPress={() => handleSelect(option)} style={styles.option}>
+                <Text>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Portal>
       )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  main: {
+    // backgroundColor: 'white',
+  },
   selectButton: {
     padding: 10,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
   },
-  iconButton: { // Estilo para el modo ícono
-    padding: 10,
+  iconButton: {
+    padding: 2,
+    alignItems: 'center',
   },
   dropdown: {
+    position: 'absolute',
     backgroundColor: 'white',
     borderRadius: 5,
     width: 200,
-    position: 'absolute',
-    zIndex: 1000,
-    elevation: 10,
+    zIndex: 1000, // Asegura que esté en un nivel alto
+    elevation: 10, // Solo para Android
   },
   option: {
     padding: 10,
