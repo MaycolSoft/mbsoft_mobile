@@ -205,34 +205,41 @@ const ProductListScreen: React.FC = () => {
 
     return (
       <View  style={[styles.gridProductContainer]}>
-        <Carousel
-          loop
-          width={width}
-          height={width / 2}
-          // autoPlay={true}
-          data={imageSources}
-          // data={[...new Array(6).keys()]}
-          // scrollAnimationDuration={2000}
-          // onSnapToItem={(index) => console.log('current index:', index)}
-          renderItem={({ index, item }) => (
-              <View
-                  style={{
-                      // flex: 1,
-                      // borderWidth: 1,
-                      // borderColor:'red',
-                      justifyContent: 'center',
-                      width:165
-                  }}
-              >
-                  <Image 
-                    source={{ uri: item }} 
-                    style={{ width: '100%', height: '100%', resizeMode: 'cover' }} 
-                  />
+        <TouchableOpacity 
+          onPress={()=>{handleEditProduct(item)}}
+          onLongPress={() =>{handleEditProduct(item)}}
+          accessibilityLabel={`Producto: ${item.description}`}
+          accessibilityHint="Presiona para ver más detalles o mantén presionado para más opciones."
+        >
+          <Carousel
+            loop
+            width={width}
+            height={width / 2}
+            // autoPlay={true}
+            data={imageSources}
+            // data={[...new Array(6).keys()]}
+            // scrollAnimationDuration={2000}
+            // onSnapToItem={(index) => console.log('current index:', index)}
+            renderItem={({ index, item }) => (
+                <View
+                    style={{
+                        // flex: 1,
+                        // borderWidth: 1,
+                        // borderColor:'red',
+                        justifyContent: 'center',
+                        width:165
+                    }}
+                >
+                    <Image 
+                      source={{ uri: item }} 
+                      style={{ width: '100%', height: '100%', resizeMode: 'cover' }} 
+                    />
 
-              </View>
-          )}
-        />
-        <Text style={styles.productName}>{item.description}</Text>
+                </View>
+            )}
+          />
+          <Text style={styles.productName}>{item.description}</Text>
+        </TouchableOpacity>
       </View>
    );
 
@@ -336,7 +343,6 @@ const styles2 = StyleSheet.create({
     padding: 8,
     marginHorizontal: 8,
     borderRadius: 10,
-    position: 'relative',
     height:1,
     flex:1
   },
@@ -529,6 +535,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     borderRadius: 10,
     flex: 1,
+    height:1
   },
   closeButton: {
     position: 'absolute',

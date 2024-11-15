@@ -41,6 +41,13 @@ const Dropdown: React.FC<DropdownProps> = ({
         const screenWidth = Dimensions.get('window').width;
         const dropdownWidth = 200; // Ancho del dropdown
         const isTooFarRight = px + dropdownWidth > screenWidth;
+
+        console.log("------------------------");
+        console.log('fx:', fx, 'fy:', fy, 'width:', width, 'height:', height, 'px:', px, 'py:', py);
+        console.log(py);
+        console.log(height);
+        console.log("------------------------");
+        console.log("");
         
         // Calcula la posición horizontal y vertical del dropdown
         setDropdownPosition({
@@ -64,8 +71,13 @@ const Dropdown: React.FC<DropdownProps> = ({
       </TouchableOpacity>
 
       {visible && (
-        <Portal>
-          <View style={[styles.dropdown, { top: dropdownPosition.top, left: dropdownPosition.left }]}>
+       <Portal>
+          <View style={[
+            styles.dropdown, { 
+              top: dropdownPosition.top, 
+              left: dropdownPosition.left 
+            }
+          ]}>
             {options.map((option, index) => (
               <TouchableOpacity key={index} onPress={() => handleSelect(option)} style={styles.option}>
                 <Text>{option.label}</Text>
@@ -81,6 +93,7 @@ const Dropdown: React.FC<DropdownProps> = ({
 const styles = StyleSheet.create({
   main: {
     // backgroundColor: 'white',
+    flex: 1,
   },
   selectButton: {
     padding: 10,
