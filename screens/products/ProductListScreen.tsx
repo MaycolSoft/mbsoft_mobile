@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image, FlatList, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
+import { Dimensions, ScrollView, View, Text, Image, FlatList, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Modal, Portal, Provider } from 'react-native-paper';
-import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+
+import Carousel from 'react-native-reanimated-carousel';
 
 
 import { postRequest, isAxiosError } from '@/api/apiService';
@@ -24,6 +26,7 @@ interface Product {
   id_tax: string;
   tax_include: boolean;
   status: boolean;
+  images?: any[];
   [key:string]: any;
 }
 
@@ -48,12 +51,13 @@ const ProductListScreen: React.FC = () => {
 
 
   const fetchProducts = useCallback(async () => {
-    
+
     if (loading || !hasMore) return;
 
     setLoading(true);
     try {
       let anotherFilter = {}
+      let path = '';
       if(searchText != ''){
         anotherFilter = {
           "filterscount": 1,
@@ -67,32 +71,54 @@ const ProductListScreen: React.FC = () => {
           ]
         }
       }
-    
-      const response = await postRequest('api/pos/searchFilterProduct', { 
-        pagenum  : page,
-        pagesize : 10,
-        ...anotherFilter
-      });
+      const version2 = true
+      if(version2){
+        const response = await postRequest('api/pos/searchProduct', { 
+          "include_images"  : 1,
+          "per_page" : 10,
+          "page"     : page,
+          "q"        : searchText
+        });
 
-      const newProducts = response.data?.products;
+        const newProducts = response.data?.data?.data;
 
-      setProducts((prevProducts) => {
-        const combined = [...prevProducts, ...newProducts];
-        return combined.length > MAX_ITEMS ? combined.slice(-MAX_ITEMS) : combined;
-      });
+        setProducts((prevProducts) => {
+          const combined = [...prevProducts, ...newProducts];
+          return combined.length > MAX_ITEMS ? combined.slice(-MAX_ITEMS) : combined;
+        });
 
-      setPage((prevPage) => prevPage + 1);
-
-      if (response.data?.data?.next_page_url == null){
-        setHasMore(false);
+        setPage((prevPage) => prevPage + 1);
+  
+        if (response.data?.data?.next_page_url == null){
+          setHasMore(false);
+        }else{
+          setHasMore(newProducts.length > 0);
+        }
       }else{
-        setHasMore(newProducts.length > 0);
+        const response = await postRequest('api/pos/searchFilterProduct', { 
+          pagenum  : page,
+          pagesize : 10,
+          ...anotherFilter
+        });
+
+        const newProducts = response.data?.products;
+
+        setProducts((prevProducts) => {
+          const combined = [...prevProducts, ...newProducts];
+          return combined.length > MAX_ITEMS ? combined.slice(-MAX_ITEMS) : combined;
+        });
+
+        setPage((prevPage) => prevPage + 1);
+  
+        if (response.data?.data?.next_page_url == null){
+          setHasMore(false);
+        }else{
+          setHasMore(newProducts.length > 0);
+        }
       }
-      
+
     } catch (error) {
       if (isAxiosError(error)) {
-        console.log(error.response?.data);
-        
         Toast.show({
           type: 'info',
           text1: 'Warning',
@@ -120,21 +146,21 @@ const ProductListScreen: React.FC = () => {
     fetchProducts();
   }, []);
 
-  useEffect(() => {
-    if (!initialized) {
-      setInitialized(true);
-      return; // No ejecutar el código en el primer render
-    }
+  // useEffect(() => {
+  //   if (!initialized) {
+  //     setInitialized(true);
+  //     return; // No ejecutar el código en el primer render
+  //   }
 
-    const delayDebounceFn = setTimeout(() => {
-      setHasMore(true);
-      setPage(0);
-      setProducts([]);
-      // fetchProducts();
-    }, 1000); // Ajusta el tiempo en milisegundos según prefieras, por ejemplo 1000 ms = 1 segundo
+  //   const delayDebounceFn = setTimeout(() => {
+  //     setHasMore(true);
+  //     setPage(0);
+  //     setProducts([]);
+  //     // fetchProducts();
+  //   }, 1000); // Ajusta el tiempo en milisegundos según prefieras, por ejemplo 1000 ms = 1 segundo
   
-    return () => clearTimeout(delayDebounceFn); // Limpia el timeout si el usuario sigue escribiendo
-  }, [searchText]);
+  //   return () => clearTimeout(delayDebounceFn); // Limpia el timeout si el usuario sigue escribiendo
+  // }, [searchText]);
 
 
   const handleEditProduct = (product: Product) => {
@@ -142,23 +168,105 @@ const ProductListScreen: React.FC = () => {
     setShowFormModal(true);
   };
 
-  
 
-  
 
-  const renderProduct = ({ item }: { item: Product }) => (
-    <View style={[styles.productContainer, viewStyle === 'grid' && styles.gridProductContainer]}>
-      <Image source={{ uri: 'https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg' }} style={styles.productImage} />
-      <Text style={styles.productName}>{item.description}</Text>
-      <TouchableOpacity style={styles.editButton} onPress={() => handleEditProduct(item)}>
-        <Text style={styles.editButtonText}>Editar</Text>
-      </TouchableOpacity>
-    </View>
-  );
+
+
+  // const renderProduct2 = ({ item }: { item: Product }) => (
+  //   <View style={[styles.productContainer, viewStyle === 'grid' && styles.gridProductContainer]}>
+  //     <Image source={{ uri: 'https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg' }} style={styles.productImage} />
+  //     <Text style={styles.productName}>{item.description}</Text>
+  //     <TouchableOpacity style={styles.editButton} onPress={() => handleEditProduct(item)}>
+  //       <Text style={styles.editButtonText}>Editar</Text>
+  //     </TouchableOpacity>
+  //   </View>
+  // );
+
+
+  const DEFAULT_IMAGE = "https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg";
+  const renderProduct =  ({ item }: { item: Product }) => {
+
+    const width = Dimensions.get('window').width;
+    let images = []
+
+    if( item?.images ){
+      images = item?.images?.map(img => {
+        if (img.image_url) {
+          return img.image_url;
+        } else if (img.image) {
+          return `data:image/${img.extension};base64,${img.image}`;
+        }
+        return null;
+      }).filter(Boolean); // Filtra valores null o undefined
+    }
+
+    const imageSources = images.length > 0 ? images : [DEFAULT_IMAGE];
+
+
+    return (
+      <View  style={[styles.gridProductContainer]}>
+        <Carousel
+          loop
+          width={width}
+          height={width / 2}
+          // autoPlay={true}
+          data={imageSources}
+          // data={[...new Array(6).keys()]}
+          // scrollAnimationDuration={2000}
+          // onSnapToItem={(index) => console.log('current index:', index)}
+          renderItem={({ index, item }) => (
+              <View
+                  style={{
+                      // flex: 1,
+                      // borderWidth: 1,
+                      // borderColor:'red',
+                      justifyContent: 'center',
+                      width:165
+                  }}
+              >
+                  <Image 
+                    source={{ uri: item }} 
+                    style={{ width: '100%', height: '100%', resizeMode: 'cover' }} 
+                  />
+
+              </View>
+          )}
+        />
+        <Text style={styles.productName}>{item.description}</Text>
+      </View>
+   );
+
+  };
+
+  // return (
+  //   <View style={[styles.gridProductContainer]}>
+  //     <FlatList
+  //       data={imageSources}
+  //       horizontal
+  //       showsHorizontalScrollIndicator={false}
+  //       pagingEnabled
+  //       keyExtractor={(image, index) => `${item.id}-${index}`}
+  //       renderItem={({ item: imageUrl }) => (
+  //         <View style={styles.imageContainer}>
+  //           <Text style={styles.productName}>{item.description}</Text>
+  //           {/* <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} /> */}
+  //         </View>
+  //       )}
+  //       // style={styles.carouselContainer}
+  //       contentContainerStyle={{ alignItems: 'center' }} // Centra el contenido en el contenedor
+  //     />
+
+  //     <Text style={styles.productName}>{item.description}</Text>
+      
+  //     {/* <TouchableOpacity style={styles.editButton} onPress={() => handleEditProduct(item)}>
+  //       <Text style={styles.editButtonText}>Editar</Text>
+  //     </TouchableOpacity> */}
+  //   </View>
+  // );
+
 
   return (
     <Provider>
-
       <SafeAreaView style={styles.safeContainer}>
 
         <View style={[styles.searchContainer]}>
@@ -200,7 +308,7 @@ const ProductListScreen: React.FC = () => {
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderProduct}
               key={viewStyle === 'list' ? 'list' : 'grid'}
-              numColumns={viewStyle === 'list' ? 1 : 2} // Configuración de columnas basada en el estilo
+              numColumns={viewStyle === 'grid' ? 2 : 1} // Configuración de columnas basada en el estilo
               contentContainerStyle={viewStyle === 'grid' && styles.gridContentContainer}
             />
           )}
@@ -221,7 +329,7 @@ const ProductListScreen: React.FC = () => {
 };
 
 
-const styles = StyleSheet.create({
+const styles2 = StyleSheet.create({
 
   modalContainer: {
     backgroundColor: '#fff',
@@ -243,11 +351,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 5,
   },
-  productContainer: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderColor: '#ddd',
-  },
+
   gridProductContainer: {
     flex: 1,
     margin: 5,
@@ -259,11 +363,6 @@ const styles = StyleSheet.create({
   },
   gridContentContainer: {
     padding: 5,
-  },
-  productImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
   },
   productName: {
     fontSize: 14,
@@ -306,6 +405,137 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+ 
+  productContainer: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+  },
+  productImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+
+  carouselContainer: {
+    marginBottom: 10,
+  },
+});
+
+
+const styles = StyleSheet.create({
+  // --- Estilos del producto ---\
+  productContainer: {
+    alignItems: 'center',
+  },
+  productImage: {
+    width: '100%',      // Ancho completo del contenedor del FlatList
+    aspectRatio: 1,     // Relación de aspecto cuadrada
+    resizeMode: 'contain', // La imagen se adapta al tamaño sin recortarse
+    borderRadius: 8,
+  },
+  imageContainer:{
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'red',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  carouselContainer: {
+    width: '100%',       // Asegura que el contenedor ocupe el ancho completo disponible
+    borderWidth: 1,
+    borderColor: 'red',
+    overflow: 'hidden',  // Evita desbordamiento de contenido en caso de que FlatList intente expandirse
+  },
+  gridProductContainer: {
+    flex: 1,
+    margin: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    elevation: 3, // sombra en Android
+    shadowColor: '#000', // sombra en iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  // productImageContainer: {
+  //   width: '100%',
+  //   height: Dimensions.get('window').width / 2,
+  //   overflow: 'hidden',
+  // },
+  productName: {
+    padding: 10,
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  gridContentContainer: {
+    // paddingHorizontal: 10,
+    // paddingBottom: 20,
+  },
+  productImageContainer: {
+    width: '100%',
+    height: Dimensions.get('window').width / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff', // para que se vea bien el contenedor
+  },
+
+
+
+
+  // --- Estilos generales de la pantalla ---
+  safeContainer: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+  container: {
+    flex: 1,
+    padding: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  textInput: {
+    height: 40,
+  },
+  dropdownStyle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 5,
+  },
+  toggleButton: {
+    marginLeft: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+
+  // --- Estilos del modal ---
+  modalContainer: {
+    backgroundColor: '#fff',
+    padding: 8,
+    marginHorizontal: 8,
+    borderRadius: 10,
+    flex: 1,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 5,
+    zIndex: 1,
   },
 });
 
