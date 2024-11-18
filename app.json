@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mbsoft.mbsoftapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,10 +26,14 @@
       "bundler": "metro",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [ 
-    ],
+    "plugins": [],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ec6bca04-94b8-4e8d-9044-85a1d4929ee5"
+      }
     }
   }
 }
