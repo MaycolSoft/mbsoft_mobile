@@ -54,10 +54,7 @@ const Logout = () => {
 
 const Tab = createBottomTabNavigator();
 
-export default function BottomTabs() {
-
-  
- 
+export default function BottomTabs() { 
   return (
     <Tab.Navigator 
     // screenOptions={screenOptions}
