@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLogStore } from '@/store/useStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Provider } from 'react-native-paper';
 
 const RenderLogItem = ({ item }: { item: any }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -39,14 +41,18 @@ const LogScreen: React.FC = () => {
   const logs = useLogStore((state) => state.logs);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Logs</Text>
-      <FlatList
-        data={logs}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => <RenderLogItem item={item} />} // Aquí se asegura de que RenderLogItem sea pasado correctamente
-      />
-    </View>
+    <Provider>
+      <SafeAreaView style={styles.safeContainer}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Logs</Text>
+          <FlatList
+            data={logs}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => <RenderLogItem item={item} />} // Aquí se asegura de que RenderLogItem sea pasado correctamente
+          />
+        </View>
+      </SafeAreaView>
+    </Provider>
   );
 };
 
@@ -54,6 +60,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+  },
+  safeContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
