@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { postRequest } from '@/api/apiService';
+import { postRequest, getRequest, isAxiosError } from '@/api/apiService';
 import Dropdown from '@/components/Dropdown';
 import Button from '@/components/Button';
 import TextInputField from '@/components/InputField';
@@ -14,18 +14,44 @@ interface ProductFormInterface {
   onSave: () => void;
 }
 
+interface CategoriaItem {
+  id: number;
+  description: string;
+}
+
+interface CategoriaUnidadesTax {
+  categoria: CategoriaItem[];
+  tax: any[]; // Puedes ajustar esto según tus datos de `tax`
+  unidad: any[]; // Puedes ajustar esto según tus datos de `unidad`
+}
+
+
+
+
+
+
+
 const ProductForm = ({ product, onClose }: ProductFormInterface) => {
   const [formData, setFormData] = useState({
     reference: '',
     description: '',
-    costo_price: '',
-    sale_price: '',
-    id_categoria: null,
-    id_unidad: null,
-    id_tax: null,
+    costo: '',
+    precio: '',
+    categoria: null,
+    unidad: null,
+    tax: null,
     tax_include: false,
-    status: true,
+    status: false,
   });
+
+  const [gettingCategoriaUnidadesTax, setGettingCategoriaUnidadesTax] = useState(false);
+  const [categoriaUnidadesTax, setCategoriaUnidadesTax] = useState<CategoriaUnidadesTax>({
+    categoria: [],
+    tax: [],
+    unidad: [],
+  });
+  
+  const [loading, setLoading] = useState(false);
 
   const [errors, setErrors] = useState<any>({});
 
@@ -35,12 +61,33 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
 
   const validateForm = () => {
     const newErrors: any = {};
+  
+    // Validar referencia
     if (!formData.reference) newErrors.reference = 'La referencia es obligatoria.';
+  
+    // Validar descripción
     if (!formData.description) newErrors.description = 'La descripción es obligatoria.';
+  
+    // Validar costo
+    if (!formData.costo) {
+      newErrors.costo = 'El costo es obligatorio.';
+    } else if (isNaN(Number(formData.costo)) || Number(formData.costo) <= 0) {
+      newErrors.costo = 'El costo debe ser un número positivo.';
+    }
+  
+    // Validar precio
+    if (!formData.precio) {
+      newErrors.precio = 'El precio es obligatorio.';
+    } else if (isNaN(Number(formData.precio)) || Number(formData.precio) <= 0) {
+      newErrors.precio = 'El precio debe ser un número positivo.';
+    }
+  
     return newErrors;
   };
+  
 
   const handleSubmit = async () => {
+    setErrors({});
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -48,19 +95,59 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
     }
 
     try {
-      await postRequest('/productos/updateOrCreateProduct', formData);
+      await postRequest('api/productos/updateOrCreateProduct', formData);
       Toast.show({
         type: 'success',
         text1: 'Producto guardado correctamente',
       });
       onClose();
     } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error al guardar el producto',
-      });
+      if (isAxiosError(error)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Warning',
+          text2: error.response?.data.message || 'Error en la respuesta del servidor',
+        })
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Ha ocurrido un error al cargar los productos',
+        });
+      }
     }
   };
+
+  const getCategoriaUnidadesTax = async () => {
+    try {
+      const response = await getRequest('api/pos/getCategoriaUnidadesTax', {})
+
+      const listCategoriaUnidadesTax = response.data?.data;
+
+      setCategoriaUnidadesTax(listCategoriaUnidadesTax);
+    } catch (error) {
+      if (isAxiosError(error)) {
+        Toast.show({
+          type: 'info',
+          text1: 'Warning',
+          text2: error.response?.data.message || 'Error en la respuesta del servidor',
+        })
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Ha ocurrido un error al cargar los productos',
+        });
+      }
+    } finally {
+      setGettingCategoriaUnidadesTax(false);
+    }
+  }
+
+
+  useEffect(()=>{
+    getCategoriaUnidadesTax();
+  },[])
 
   return (
     <Provider>
@@ -78,6 +165,7 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
               onChangeText={(value) => handleChange('reference', value)}
               error={errors.reference}
             />
+
             <TextInputField
               label="Descripción"
               value={formData.description}
@@ -90,17 +178,19 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
             <Text style={styles.sectionTitle}>Precios</Text>
             <TextInputField
               label="Costo"
-              value={formData.costo_price}
+              value={formData.costo}
               placeholder="Costo"
               keyboardType="numeric"
-              onChangeText={(value) => handleChange('costo_price', value)}
+              error={errors.costo}
+              onChangeText={(value) => handleChange('costo', value)}
             />
             <TextInputField
               label="Precio"
-              value={formData.sale_price}
+              value={formData.precio}
               placeholder="Precio"
               keyboardType="numeric"
-              onChangeText={(value) => handleChange('sale_price', value)}
+              error={errors.precio}
+              onChangeText={(value) => handleChange('precio', value)}
             />
 
 
@@ -108,11 +198,11 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
               <View style={styles.dropdownContainer}>
                 <Dropdown
                   label="Categoría"
-                  onSelect={(item) => handleChange('id_categoria', item.value)}
-                  options={[
-                    { label: 'Categoría 1', value: '1' },
-                    { label: 'Categoría 2', value: '2' },
-                  ]}
+                  onSelect={(item) => handleChange('categoria', item.value)}
+                  options={categoriaUnidadesTax.categoria.map(item => ({
+                    label: item?.description,
+                    value: item?.id,
+                  }))}
                   extraButton={{
                     icon: 'settings',
                     onPress: () => console.log('Abrir configuración'),
@@ -124,11 +214,13 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
               <View style={styles.dropdownContainer}>
                 <Dropdown
                   label="Unidad"
-                  onSelect={(item) => handleChange('id_unidad', item.value)}
-                  options={[
-                    { label: 'Unidad 1', value: '1' },
-                    { label: 'Unidad 2', value: '2' },
-                  ]}
+                  onSelect={(item) => handleChange('unidad', item.value)}
+                  options={
+                    categoriaUnidadesTax.unidad.map(item => ({
+                      label: item?.description,
+                      value: item?.id,
+                    }))
+                  }
                   extraButton={{
                     icon: 'settings',
                     onPress: () => console.log('Abrir configuración'),
@@ -140,18 +232,20 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
               <View style={styles.dropdownContainer}>
                 <Dropdown
                   label="ITBIS"
-                  onSelect={(item) => handleChange('id_tax', item.value)}
-                  options={[
-                    { label: '11%', value: 11 },
-                    { label: '12%', value: 12 },
-                  ]}
+                  onSelect={(item) => handleChange('tax', item.value)}
+                  options={
+                    categoriaUnidadesTax.tax.map(item => ({
+                      label: item?.description,
+                      value: item?.id,
+                    }))
+                  }
                 />
               </View>
 
               <View style={styles.dropdownContainer}>
                 <Dropdown
                   label="Impuesto Incluido"
-                  onSelect={(item) => handleChange('tax_include', item.value === 'SI')}
+                  onSelect={(item) => handleChange('tax_include', item.value === 'SI'?1:0)}
                   options={[
                     { label: 'SI', value: 'SI' },
                     { label: 'NO', value: 'NO' },

@@ -5,7 +5,84 @@ import { NavigationContainer } from '@react-navigation/native';
 import BottomTabs from '@/BottomTabs';
 import Login from '@/screens/Login';
 import useStore from '@/store/useStore';
-import Toast from 'react-native-toast-message';
+import Toast, {
+  BaseToast,
+  BaseToastProps,
+  ToastConfig,
+} from "react-native-toast-message";
+
+
+
+const toastProps: BaseToastProps = {
+  text1Style: {
+    fontSize: 18,
+  },
+  text2Style: {
+    fontSize: 14,
+  },
+  text2NumberOfLines: 0,
+  style: {
+    height: "auto",
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+  },
+};
+
+
+const toastConfig: ToastConfig = {
+  success: (props) => (
+    <BaseToast
+      {...props}
+      {...toastProps}
+      style={[
+        toastProps.style,
+        {
+          borderLeftColor: "#69C779",
+        },
+      ]}
+    />
+  ),
+  error: (props: BaseToastProps) => (
+    <BaseToast
+      {...props}
+      {...toastProps}
+      style={[
+        toastProps.style,
+        {
+          borderLeftColor: "#FE6301",
+        },
+      ]}
+    />
+  ),
+  warning: (props) => (
+    <BaseToast
+      {...props}
+      {...toastProps}
+      style={[
+        toastProps.style,
+        {
+          borderLeftColor: "#FFC107",
+        },
+      ]}
+    />
+  ),
+  info: (props) => (
+    <BaseToast
+      {...props}
+      {...toastProps}
+      style={[
+        toastProps.style
+      ]}
+    />
+  ),
+};
+
+
+
+
+
+
+
 
 
 export default function App() {
@@ -42,7 +119,7 @@ export default function App() {
             <Login />
           </Animated.View>
         )}
-        <Toast />
+        <Toast config={toastConfig} />
       </View>
     </NavigationContainer>
   );

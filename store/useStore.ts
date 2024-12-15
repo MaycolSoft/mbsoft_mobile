@@ -39,7 +39,7 @@ export const useLogStore = create<LogStore>((set) => ({
   logs: [],
   addLog: (log) =>
     set((state) => ({
-      logs: [...state.logs, log],
+      logs: [log, ...state.logs], // Inserta el nuevo log al principio
     })),
 }));
 //////////////////// LOGS ////////////////////
