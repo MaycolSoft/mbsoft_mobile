@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mbsoft.mbsoftapp"
+      "bundleIdentifier": "com.chinamobile.sdnmoa"
     },
     "android": {
       "adaptiveIcon": {
