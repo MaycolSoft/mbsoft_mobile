@@ -21,13 +21,23 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.chinamobile.sdnmoa"
     },
     "web": {
       "bundler": "metro",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [],
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },

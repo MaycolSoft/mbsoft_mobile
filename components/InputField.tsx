@@ -2,7 +2,7 @@
 import {TextInput, StyleSheet, View, Text} from 'react-native'
 
 interface TextInputFieldInterface {
-    value: string;
+    value: string|number;
     onChangeText?: (text: string) => void;
     placeholder: string;
     error?: string;
@@ -25,24 +25,13 @@ const TextInputField = (props:TextInputFieldInterface) => {
             style={[styles.input, error ? styles.errorInput : {}, style]}
             placeholder={placeholder}
             placeholderTextColor="#888"
-            value={value}
+            value={value?`${value}`:undefined}
             onChangeText={onChangeText}
             {...otherProps}
           />
           {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
       );
-
-    return (
-        <TextInput
-        style={[styles.input, {...style}]}
-        placeholder={placeholder}
-        placeholderTextColor="#888"
-        value={value}
-        onChangeText={onChangeText}
-        {...otherProps}
-      />
-    )
 }
 
 

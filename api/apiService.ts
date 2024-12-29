@@ -30,9 +30,9 @@ export const getRequest = async (url: string, params = {}) => {
   return axiosInstance.get(url, { params });
 };
 
-export const postRequest = async (url: string, data = {}) => {
+export const postRequest = async (url: string, data = {}, config={}) => {
   logRequest("POST", url, data);
-  return axiosInstance.post(url, data);
+  return axiosInstance.post(url, data, {...config});
 };
 
 export const putRequest = async (url: string, data = {}) => {

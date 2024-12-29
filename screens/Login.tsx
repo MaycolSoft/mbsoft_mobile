@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
+import { Animated, View, Text, TouchableOpacity, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { postRequest, isAxiosError } from '@/api/apiService';
 import useStore from '@/store/useStore';
 import TextInputField from '@/components/InputField';
-import Toast from 'react-native-toast-message';
+import CheckBox from '@/components/CheckBox';
+import Toast from 'react-native-toast-message'; 
 
 
 const LoginScreen = () => {
@@ -13,6 +14,27 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('admin');
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
+
+
+  const [showInput, setShowInput] = useState(false);
+  const [scaleValue] = useState(new Animated.Value(1));
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleValue, {
+        toValue: 1.2,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleValue, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShowInput(!showInput));
+  };
+
+
 
   const setAccessToken = useStore((state) => state.setAccessToken);
 
@@ -122,15 +144,36 @@ const LoginScreen = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
-          <Text style={styles.title}>Iniciar Sesión</Text>
 
-          <TextInputField
-            placeholder="ID de Empresa"
-            keyboardType="numeric"
-            value={idEmpresa}
-            onChangeText={setIdEmpresa}
-            editable={!loading}
-          />
+          <TouchableWithoutFeedback onPress={handlePress}>
+            <Animated.Text style={[styles.title, { transform: [{ scale: scaleValue }] }]}>
+              Iniciar Sesión
+            </Animated.Text>
+          </TouchableWithoutFeedback> 
+
+          {showInput && (
+            <View style={{ 
+              display:"flex",
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              marginBottom: 20 
+            }}>
+              <Text style={{ marginRight: 10, fontSize: 16 }}>ID de Empresa</Text>
+              <TextInputField
+                placeholder="Empresa"
+                keyboardType="numeric"
+                value={idEmpresa}
+                onChangeText={setIdEmpresa}
+                editable={!loading}
+                style={{
+                  // flex: 1,
+                  width:100,
+                  height: 45,
+                }}
+              />
+            </View>
+          )}
+
 
           <TextInputField
             placeholder="Username o Email"
@@ -149,9 +192,14 @@ const LoginScreen = () => {
 
           <View style={styles.rememberContainer}>
             <Text style={styles.rememberText}>Recordar</Text>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={[styles.checkbox, remember ? styles.checkboxSelected : null]}
               onPress={() => setRemember(!remember)}
+              disabled={loading}
+            /> */}
+            <CheckBox
+              remember={remember}
+              setRemember={()=>setRemember(!remember)}
               disabled={loading}
             />
           </View>

@@ -1,38 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Portal } from 'react-native-paper';
 import Button from '@/components/Button';
-type MaterialIconsName = keyof typeof MaterialIcons.glyphMap;
-
-
-interface Options {
-  label: string;
-  value: string | number;
-  [key: string]: any;
-}
-
-interface DropdownProps {
-  options: Options[];
-  onSelect?: (option: Options) => void;
-  style?: ViewStyle;
-  iconMode?: boolean;
-  label?: string;
-  extraButton?: {
-    title?:string,
-    icon?: MaterialIconsName; // Nombre del ícono
-    onPress: () => void; // Acción al presionar el botón
-    variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'info' | 'dark' | 'light'; // Variante del botón (opcional)
-    size?: 'small' | 'medium' | 'large'; // Tamaño del botón (opcional)
-    style?: ViewStyle; // Estilo adicional (opcional)
-  };
-}
-
+import { DropdownProps, Options } from '@/interfaces';
 
 
 const Dropdown: React.FC<DropdownProps> = ({ 
   label = "",
   options,
+  value,
   onSelect = () => {},
   style = {},
   iconMode = false ,
@@ -43,6 +20,8 @@ const Dropdown: React.FC<DropdownProps> = ({
   const dropdownRef = useRef<View>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
+
+  
   const handleSelect = (option: Options) => {
     setSelectedOption(option);
     onSelect(option);
@@ -66,6 +45,14 @@ const Dropdown: React.FC<DropdownProps> = ({
       });
     }
   };
+
+
+  useEffect(()=>{
+    if(value && options.length > 0){      
+      const selectedOption = options.find(option => option.value === value);
+      setSelectedOption(selectedOption || null);
+    }
+  }, [value, options]);
 
   return (
     <View style={[styles.main, style]} ref={dropdownRef}>

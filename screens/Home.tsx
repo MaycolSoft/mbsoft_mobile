@@ -1,51 +1,86 @@
 // HomeScreen.tsx
-import React from 'react';
-import { View, Text, Button, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer'; // Importa DrawerNavigationProp
-import { Ionicons } from '@expo/vector-icons';
-import useStore from '@/store/useStore';
+import React, {useState} from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import CameraComponent from '@/components/Camera';
 
-// Define el tipo RootDrawerParamList para que use tu drawer
-type RootDrawerParamList = {
-  Home: undefined;
-  Settings: undefined;
-};
 
 export default function HomeScreen() {
-  const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
+  const [isCameraOpen, setIsCameraOpen] = useState(false); // Controla la apertura de la cámara
+  const [images, setImages] = useState<string[]>([]); // Almacena las imágenes capturadas
 
-  const count = useStore((state) => state.count);
-  const increaseCount = useStore((state) => state.increaseCount);
-  const resetCount = useStore((state) => state.resetCount);
+  const handleSendImages = (capturedImages: string[]) => {
+    setImages(capturedImages); // Guarda las imágenes en el estado
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Hello, World! mundo mundo</Text>
-      <Text style={styles.counterText}>Global Count: {count}</Text>
-      <Button title="Increase Count" onPress={increaseCount} />
-      <Button title="Reset Count" onPress={resetCount} />
+      {isCameraOpen ? (
+        <CameraComponent
+          onClose={() => setIsCameraOpen(false)} // Cierra la cámara
+          onDone={handleSendImages} // Recibe las imágenes capturadas
+        />
+      ) : (
+        <View style={styles.content}>
+          <TouchableOpacity style={styles.button} onPress={() => setIsCameraOpen(true)}>
+            <Text style={styles.buttonText}>Open Camera</Text>
+          </TouchableOpacity>
+
+          {images.length > 0 && (
+            <View style={styles.previewContainer}>
+              <Text style={styles.previewText}>Captured Images:</Text>
+              <View style={styles.previewList}>
+                {images.map((uri, index) => (
+                  <Image key={index} source={{ uri }} style={styles.previewImage} />
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
+
+
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
+    backgroundColor: '#f0f0f0',
+  },
+  content: {
     alignItems: 'center',
   },
-  hamburgerButton: {
-    position: 'absolute',
-    top: 40,
-    left: 20, // Posición del botón en la parte superior izquierda
-  },
-  text: {
-    fontSize: 24,
+  button: {
+    backgroundColor: '#007bff',
+    padding: 15,
+    borderRadius: 10,
     marginBottom: 20,
   },
-  counterText: {
-    fontSize: 20,
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  previewContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  previewText: {
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 10,
+  },
+  previewList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    width: 80,
+    height: 80,
+    margin: 5,
+    borderRadius: 5,
   },
 });

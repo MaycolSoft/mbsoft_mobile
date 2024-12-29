@@ -1,49 +1,31 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Dimensions, ScrollView, View, Text, Image, FlatList, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
+import { Dimensions, View, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Modal, Portal, Provider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-
-import Carousel from 'react-native-reanimated-carousel';
-
-
 import { postRequest, isAxiosError } from '@/api/apiService';
+import { Product } from '@/interfaces';
+
+//////////COMPONENTS//////////
+import ProductOverlay from './CustomListTest';
 import Dropdown from '@/components/Dropdown';
-import Button from '@/components/Button';
 import ProductForm from './ProductForm';
 import TextInputField from '@/components/InputField';
+//////////COMPONENTS//////////
 
-
-interface Product {
-  id: number;
-  reference: string;
-  description: string;
-  sale_price: number;
-  costo_price: number;
-  id_categoria: string;
-  id_unidad: string;
-  id_tax: string;
-  tax_include: boolean;
-  status: boolean;
-  images?: any[];
-  [key:string]: any;
-}
 
 const MAX_ITEMS = 50;
 
 const ProductListScreen: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState<boolean>(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState<boolean>(true);
   const [showFormModal, setShowFormModal] = useState<boolean>(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product>();
   const [initialized, setInitialized] = useState(false);
   const [viewStyle, setViewStyle] = useState('grid');
-
-
-
   const [searchText, setSearchText] = useState('');
   const [filterField, setFilterField] = useState('description');
 
@@ -51,13 +33,15 @@ const ProductListScreen: React.FC = () => {
 
 
   const fetchProducts = useCallback(async () => {
-
+    
     if (loading || !hasMore) return;
 
     setLoading(true);
+
     try {
       let anotherFilter = {}
       let path = '';
+
       if(searchText != ''){
         anotherFilter = {
           "filterscount": 1,
@@ -71,16 +55,17 @@ const ProductListScreen: React.FC = () => {
           ]
         }
       }
+
       const version2 = true
       if(version2){
         const response = await postRequest('api/pos/searchProduct', { 
           "include_images"  : 1,
-          "per_page" : 10,
+          "per_page" : 35,
           "page"     : page,
           "q"        : searchText
         });
 
-        const newProducts = response.data?.data?.data;
+        const newProducts = response.data?.data?.data;        
 
         setProducts((prevProducts) => {
           const combined = [...prevProducts, ...newProducts];
@@ -88,12 +73,7 @@ const ProductListScreen: React.FC = () => {
         });
 
         setPage((prevPage) => prevPage + 1);
-  
-        if (response.data?.data?.next_page_url == null){
-          setHasMore(false);
-        }else{
-          setHasMore(newProducts.length > 0);
-        }
+        setHasMore(newProducts.length > 0);
       }else{
         const response = await postRequest('api/pos/searchFilterProduct', { 
           pagenum  : page,
@@ -109,7 +89,7 @@ const ProductListScreen: React.FC = () => {
         });
 
         setPage((prevPage) => prevPage + 1);
-  
+
         if (response.data?.data?.next_page_url == null){
           setHasMore(false);
         }else{
@@ -141,7 +121,7 @@ const ProductListScreen: React.FC = () => {
   const toggleViewStyle = () => {
     setViewStyle((prevStyle) => (prevStyle === 'list' ? 'grid' : 'list'));
   };
-  
+
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -154,9 +134,9 @@ const ProductListScreen: React.FC = () => {
 
   //   const delayDebounceFn = setTimeout(() => {
   //     setHasMore(true);
-  //     setPage(0);
+  //     setPage(1);
   //     setProducts([]);
-  //     // fetchProducts();
+  //     fetchProducts();
   //   }, 1000); // Ajusta el tiempo en milisegundos según prefieras, por ejemplo 1000 ms = 1 segundo
   
   //   return () => clearTimeout(delayDebounceFn); // Limpia el timeout si el usuario sigue escribiendo
@@ -167,110 +147,6 @@ const ProductListScreen: React.FC = () => {
     setSelectedProduct(product);
     setShowFormModal(true);
   };
-
-
-
-
-
-  // const renderProduct2 = ({ item }: { item: Product }) => (
-  //   <View style={[styles.productContainer, viewStyle === 'grid' && styles.gridProductContainer]}>
-  //     <Image source={{ uri: 'https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg' }} style={styles.productImage} />
-  //     <Text style={styles.productName}>{item.description}</Text>
-  //     <TouchableOpacity style={styles.editButton} onPress={() => handleEditProduct(item)}>
-  //       <Text style={styles.editButtonText}>Editar</Text>
-  //     </TouchableOpacity>
-  //   </View>
-  // );
-
-
-  const DEFAULT_IMAGE = "https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg";
-  const renderProduct =  ({ item }: { item: Product }) => {
-
-    const width = Dimensions.get('window').width;
-    let images = []
-
-    if( item?.images ){
-      images = item?.images?.map(img => {
-        if (img.image_url) {
-          return img.image_url;
-        } else if (img.image) {
-          return `data:image/${img.extension};base64,${img.image}`;
-        }
-        return null;
-      }).filter(Boolean); // Filtra valores null o undefined
-    }
-
-    const imageSources = images.length > 0 ? images : [DEFAULT_IMAGE];
-
-
-    return (
-      <View  style={[styles.gridProductContainer]}>
-        <TouchableOpacity 
-          onPress={()=>{handleEditProduct(item)}}
-          onLongPress={() =>{handleEditProduct(item)}}
-          accessibilityLabel={`Producto: ${item.description}`}
-          accessibilityHint="Presiona para ver más detalles o mantén presionado para más opciones."
-        >
-          <Carousel
-            loop
-            width={width}
-            height={width / 2}
-            // autoPlay={true}
-            data={imageSources}
-            // data={[...new Array(6).keys()]}
-            // scrollAnimationDuration={2000}
-            // onSnapToItem={(index) => console.log('current index:', index)}
-            renderItem={({ index, item }) => (
-                <View
-                    style={{
-                        // flex: 1,
-                        // borderWidth: 1,
-                        // borderColor:'red',
-                        justifyContent: 'center',
-                        width:165
-                    }}
-                >
-                    <Image 
-                      source={{ uri: item }} 
-                      style={{ width: '100%', height: '100%', resizeMode: 'cover' }} 
-                    />
-
-                </View>
-            )}
-          />
-          <Text style={styles.productName}>{item.description}</Text>
-        </TouchableOpacity>
-      </View>
-   );
-
-  };
-
-  // return (
-  //   <View style={[styles.gridProductContainer]}>
-  //     <FlatList
-  //       data={imageSources}
-  //       horizontal
-  //       showsHorizontalScrollIndicator={false}
-  //       pagingEnabled
-  //       keyExtractor={(image, index) => `${item.id}-${index}`}
-  //       renderItem={({ item: imageUrl }) => (
-  //         <View style={styles.imageContainer}>
-  //           <Text style={styles.productName}>{item.description}</Text>
-  //           {/* <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} /> */}
-  //         </View>
-  //       )}
-  //       // style={styles.carouselContainer}
-  //       contentContainerStyle={{ alignItems: 'center' }} // Centra el contenido en el contenedor
-  //     />
-
-  //     <Text style={styles.productName}>{item.description}</Text>
-      
-  //     {/* <TouchableOpacity style={styles.editButton} onPress={() => handleEditProduct(item)}>
-  //       <Text style={styles.editButtonText}>Editar</Text>
-  //     </TouchableOpacity> */}
-  //   </View>
-  // );
-
 
   return (
     <Provider>
@@ -305,20 +181,16 @@ const ProductListScreen: React.FC = () => {
 
 
         <View style={styles.container}>
-          {loading && products.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#0000ff" />
-            </View>
-          ) : (
-            <FlatList
-              data={products}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={renderProduct}
-              key={viewStyle === 'list' ? 'list' : 'grid'}
-              numColumns={viewStyle === 'grid' ? 2 : 1} // Configuración de columnas basada en el estilo
-              contentContainerStyle={viewStyle === 'grid' && styles.gridContentContainer}
-            />
-          )}
+          <ProductOverlay
+            products={products}
+            onPress={(product) => {
+              handleEditProduct(product)
+            }}
+            onEndReached={()=>{
+              fetchProducts();
+            }}
+            loading={loading}
+          />
         </View>
 
         <Portal>
@@ -335,101 +207,6 @@ const ProductListScreen: React.FC = () => {
   );
 };
 
-
-const styles2 = StyleSheet.create({
-
-  modalContainer: {
-    backgroundColor: '#fff',
-    padding: 8,
-    marginHorizontal: 8,
-    borderRadius: 10,
-    height:1,
-    flex:1
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    padding: 5,
-    zIndex: 1,
-  },
-  container: {
-    flex: 1,
-    padding: 5,
-  },
-
-  gridProductContainer: {
-    flex: 1,
-    margin: 5,
-    padding: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-  },
-  gridContentContainer: {
-    padding: 5,
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginVertical: 8,
-  },
-  editButton: {
-    backgroundColor: '#007bff',
-    padding: 5,
-    borderRadius: 4,
-    marginTop: 10,
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 12,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  safeContainer: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  textInput: {
-    height: 40,
-  },
-  dropdownStyle: {
-    alignItems:'center',
-    justifyContent: 'center',
-    marginLeft: 5,
-  },
-  toggleButton: {
-    marginLeft: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
- 
-  productContainer: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
-  },
-  productImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 8,
-    marginHorizontal: 5,
-  },
-
-  carouselContainer: {
-    marginBottom: 10,
-  },
-});
 
 
 const styles = StyleSheet.create({
@@ -467,6 +244,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    height:150
   },
   // productImageContainer: {
   //   width: '100%',
@@ -501,12 +279,13 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 5,
+    padding: 0,
   },
   loadingContainer: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 999,
   },
   searchContainer: {
     flexDirection: 'row',
