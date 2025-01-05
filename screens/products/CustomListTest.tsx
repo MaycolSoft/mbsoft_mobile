@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Product , ProductOverlayProps } from '@/interfaces';
+import { Marquee } from '@animatereactnative/marquee';
 
 
 
@@ -39,7 +40,8 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
     const SCREEN_WIDTH = Dimensions.get('window').width;
 
     if (text.length * CHARACTER_WIDTH < SCREEN_WIDTH) {
-      return <Text style={[styles.overlayText, { textAlign:'center' }]}>{text}</Text>;
+      
+      return <Text style={[ { textAlign:'center', maxHeight:20 }]}>{text}</Text>;
     }
 
     useEffect(() => {
@@ -130,7 +132,7 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
 
         {/* Contenedor de información */}
         <View style={styles.infoContainer}>
-          <View style={styles.descriptionContainer}>
+          <View style={[styles.descriptionContainer]}>
             <AnimatedText text={item.description} />
           </View>
           <View style={styles.priceContainer}>
@@ -147,78 +149,209 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
     const itemWidth = screenWidth / numColumns - 20; // Adjust width based on columns
     const cardHeight = itemWidth * 1.2; // Define a consistent height-to-width ratio
 
-    return (
-      <TouchableOpacity
+    // return (
+    //   <View
+    //     style={{
+    //       borderWidth: 0.25,
+    //       borderColor: "gray",
+    //       borderRadius: 8,
+    //       margin: 2,
+    //       width: itemWidth+10,
+    //       height: cardHeight + 20,
+    //       overflow: "visible", // Allow shadow to extend beyond border
+    //       backgroundColor: "#fff",
+    //       shadowColor: "#000",
+    //       shadowOffset: { width: 0, height: 2 },
+    //       shadowOpacity: 0.25,
+    //       shadowRadius: 3.84,
+    //       elevation: 5, // For Android shadow
+    //     }}
+    //   >
+    //     {/* Imagen del producto */}
+    //     <ScrollView
+    //       style={{
+    //         // flex: 1,
+    //         // borderWidth: 1,
+    //         // borderColor: "red",
+    //         minHeight:cardHeight*0.7,
+    //         maxHeight:cardHeight*0.7,
+    //       }}
+    //       contentContainerStyle={{
+    //         // justifyContent: "center",
+    //         // alignItems: "center",
+    //       }}
+    //       horizontal
+    //       pagingEnabled
+    //       showsHorizontalScrollIndicator={false}
+
+    //     >
+    //       {/* DEFAULT_IMAGE */}
+    //       {(!item?.images || item.images.length == 0 )&& (
+    //         <View
+    //           key={0}
+    //           style={{
+    //             width: '100%',
+    //             minWidth: '100%',
+    //             maxHeight: '100%',
+    //             minHeight: '100%',
+    //           }}
+    //         >
+    //           <Image
+    //             source={{ uri: DEFAULT_IMAGE}}
+    //             style={{
+    //               width: "100%",
+    //               height: "100%",
+    //               resizeMode: "contain", // Maintain aspect ratio within the container
+    //             }}
+    //           />
+    //         </View>
+    //       )}
+
+    //       {item?.images && item.images.map((value, index) => (
+    //         <View
+    //           key={index}
+    //           style={{
+    //             width: '100%',
+    //             minWidth: '100%',
+    //             maxHeight: '100%',
+    //             minHeight: '100%',
+    //           }}
+    //         >
+    //           <Image
+    //             source={
+    //               // value.image_url && value.image
+    //               value.image_url
+    //                 ? { uri: value.image_url } // Imagen desde URL
+    //                 : { uri: `data:image/jpeg;base64,${value.image}` } // Imagen en Base64
+    //             }
+    //             style={{
+    //               width: "100%",
+    //               height: "100%",
+    //               resizeMode: "contain", // Maintain aspect ratio within the container
+    //               borderRadius: 8,
+    //             }}
+    //           />
+    //         </View>
+    //       ))}
+    //     </ScrollView>
+
+    //     {/* Contenedor de información */}
+    //     <TouchableOpacity
+    //       onPress={() => onPress && onPress(item)}
+    //     >
+    //       <View style={[
+    //         styles.infoContainer
+    //       ]}>
+    //         <View style={[
+    //           styles.descriptionContainer
+    //         ]}>
+    //           <AnimatedText text={item.description} />
+    //         </View>
+    //         <View style={styles.priceContainer}>
+    //           <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
+    //         </View>
+    //       </View>
+    //     </TouchableOpacity>
+    //   </View>
+    // );
+    return(
+      <View
         style={{
+          // Tu card
           borderWidth: 0.25,
           borderColor: "gray",
           borderRadius: 8,
           margin: 2,
-          width: itemWidth+10,
+          width: itemWidth + 10,   // <--- ancho fijo
           height: cardHeight + 20,
-          overflow: "visible", // Allow shadow to extend beyond border
           backgroundColor: "#fff",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.25,
           shadowRadius: 3.84,
-          elevation: 5, // For Android shadow
+          elevation: 5,
         }}
-        onPress={() => onPress && onPress(item)}
       >
-        {/* Imagen del producto */}
         <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          // El ScrollView también debe usar el MISMO ancho que el contenedor
           style={{
-            flex: 1,
-            // borderBottomWidth: 1,
-            // borderColor: "lightgray",
+            width: itemWidth + 10,             // <--- ANCHO IGUAL que el padre
+            minHeight: cardHeight * 0.7,
+            maxHeight: cardHeight * 0.7,
           }}
           contentContainerStyle={{
-            justifyContent: "center",
-            alignItems: "center",
+            // lo que necesites
           }}
-          horizontal
-          showsHorizontalScrollIndicator={false}
         >
-          {item?.images && item.images.map((value, index) => (
+          {/* DEFAULT IMAGE */}
+          {(!item?.images || item.images.length === 0) && (
+            <View
+              key={0}
+              style={{
+                width: itemWidth + 10,         // <--- MISMO ancho
+                height: '100%',
+              }}
+            >
+              <Image
+                source={{ uri: DEFAULT_IMAGE }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  resizeMode: 'contain',
+                }}
+              />
+            </View>
+          )}
+
+          {/* DEMÁS IMÁGENES */}
+          {item?.images?.map((value, index) => (
             <View
               key={index}
               style={{
-                width: itemWidth,
-                height: cardHeight * 0.7, // Occupy 70% of the card for the image
-                justifyContent: "center",
-                alignItems: "center",
-                overflow: "hidden",
+                width: itemWidth + 10,         // <--- MISMO ancho
+                height: '100%',
               }}
             >
               <Image
                 source={
-                  // value.image_url && value.image
                   value.image_url
-                    ? { uri: value.image_url } // Imagen desde URL
-                    : { uri: `data:image/jpeg;base64,${value.image}` } // Imagen en Base64
+                    ? { uri: value.image_url }
+                    : { uri: `data:image/jpeg;base64,${value.image}` }
                 }
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  resizeMode: "contain", // Maintain aspect ratio within the container
+                  width: '100%',
+                  height: '100%',
+                  resizeMode: 'contain',
+                  borderRadius: 8,
                 }}
               />
             </View>
           ))}
         </ScrollView>
 
-        {/* Contenedor de información */}
-        <View style={styles.infoContainer}>
-          <View style={styles.descriptionContainer}>
-            <AnimatedText text={item.description} />
+
+         {/* Contenedor de información */}
+        <TouchableOpacity
+          onPress={() => onPress && onPress(item)}
+        >
+          <View style={[
+            styles.infoContainer
+          ]}>
+            <View style={[
+              styles.descriptionContainer
+            ]}>
+              <AnimatedText text={item.description} />
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
+            </View>
           </View>
-          <View style={styles.priceContainer}>
-            <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
+        </TouchableOpacity>
+      </View>
+    )
   };
 
 
@@ -278,6 +411,8 @@ const styles = StyleSheet.create({
     elevation: 2, // Para sombra en Android
   },
   descriptionContainer: {
+    paddingLeft:2,
+    paddingRight:2,
   },
   priceContainer: {
     alignItems: 'flex-end',

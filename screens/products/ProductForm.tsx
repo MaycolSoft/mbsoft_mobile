@@ -135,7 +135,7 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
   };
 
   const handleSendImages = async () => {
-    
+
     if(imageManagment.length == 0 && product?.id){
       return
     }
@@ -163,8 +163,6 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
         console.error(`Error al procesar la imagen ${index}:`, error);
       }
     }
-  
-  
 
     formData.append('save_location', 'db');
 
@@ -179,24 +177,7 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
         text2: 'Imágenes enviadas correctamente.',
       });
     } catch (error) {
-      if(isAxiosError(error)){
-        console.log(error.response?.data);
-        
-        Toast.show({
-          type: 'error',
-          text1: 'Warning',
-          text2: error.response?.data.message || 'Error en la respuesta del servidor',
-        })
-        return;
-      }
-
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Error enviando imágenes.',
-      });
-    } finally {
-      // setUploading(false);
+      throw error
     }
   };
 

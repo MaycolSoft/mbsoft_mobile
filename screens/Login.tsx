@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Animated, View, Text, TouchableOpacity, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message'; 
 import { postRequest, isAxiosError } from '@/api/apiService';
 import useStore from '@/store/useStore';
 import TextInputField from '@/components/InputField';
 import CheckBox from '@/components/CheckBox';
-import Toast from 'react-native-toast-message'; 
 
 
 const LoginScreen = () => {

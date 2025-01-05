@@ -144,8 +144,8 @@ const ProductListScreen: React.FC = () => {
 
 
   const handleEditProduct = (product: Product) => {
-    setSelectedProduct(product);
     setShowFormModal(true);
+    setSelectedProduct({ ...product });
   };
 
   return (
