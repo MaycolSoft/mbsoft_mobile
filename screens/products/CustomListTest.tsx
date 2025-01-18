@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Product , ProductOverlayProps } from '@/interfaces';
 import { Marquee } from '@animatereactnative/marquee';
+import Toast from 'react-native-toast-message';
 
 
 
@@ -272,66 +273,75 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
           elevation: 5,
         }}
       >
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          // El ScrollView también debe usar el MISMO ancho que el contenedor
-          style={{
-            width: itemWidth + 10,             // <--- ANCHO IGUAL que el padre
-            minHeight: cardHeight * 0.7,
-            maxHeight: cardHeight * 0.7,
-          }}
-          contentContainerStyle={{
-            // lo que necesites
+        <TouchableOpacity
+          onLongPress={()=>{
+            Toast.show({
+              type: 'info',
+              text1: 'Warning',
+              text2: 'HOLA'
+            })
           }}
         >
-          {/* DEFAULT IMAGE */}
-          {(!item?.images || item.images.length === 0) && (
-            <View
-              key={0}
-              style={{
-                width: itemWidth + 10,         // <--- MISMO ancho
-                height: '100%',
-              }}
-            >
-              <Image
-                source={{ uri: DEFAULT_IMAGE }}
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            // El ScrollView también debe usar el MISMO ancho que el contenedor
+            style={{
+              width: itemWidth + 10,             // <--- ANCHO IGUAL que el padre
+              minHeight: cardHeight * 0.7,
+              maxHeight: cardHeight * 0.7,
+            }}
+            contentContainerStyle={{
+              // lo que necesites
+            }}
+          >
+            {/* DEFAULT IMAGE */}
+            {(!item?.images || item.images.length === 0) && (
+              <View
+                key={0}
                 style={{
-                  width: '100%',
+                  width: itemWidth + 10,         // <--- MISMO ancho
                   height: '100%',
-                  resizeMode: 'contain',
                 }}
-              />
-            </View>
-          )}
+              >
+                <Image
+                  source={{ uri: DEFAULT_IMAGE }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    resizeMode: 'contain',
+                  }}
+                />
+              </View>
+            )}
 
-          {/* DEMÁS IMÁGENES */}
-          {item?.images?.map((value, index) => (
-            <View
-              key={index}
-              style={{
-                width: itemWidth + 10,         // <--- MISMO ancho
-                height: '100%',
-              }}
-            >
-              <Image
-                source={
-                  value.image_url
-                    ? { uri: value.image_url }
-                    : { uri: `data:image/jpeg;base64,${value.image}` }
-                }
+            {/* DEMÁS IMÁGENES */}
+            {item?.images?.map((value, index) => (
+              <View
+                key={index}
                 style={{
-                  width: '100%',
+                  width: itemWidth + 10,         // <--- MISMO ancho
                   height: '100%',
-                  resizeMode: 'contain',
-                  borderRadius: 8,
                 }}
-              />
-            </View>
-          ))}
-        </ScrollView>
-
+              >
+                <Image
+                  source={
+                    value.image_url
+                      ? { uri: value.image_url }
+                      : { uri: `data:image/jpeg;base64,${value.image}` }
+                  }
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    resizeMode: 'contain',
+                    borderRadius: 8,
+                  }}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </TouchableOpacity>
 
          {/* Contenedor de información */}
         <TouchableOpacity

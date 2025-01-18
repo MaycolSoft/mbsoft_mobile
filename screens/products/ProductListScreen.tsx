@@ -158,7 +158,7 @@ const ProductListScreen: React.FC = () => {
             value={searchText}
             onChangeText={(text) => setSearchText(text)}
             onSubmitEditing={fetchProducts}
-            style={{height:40, flex:7}}
+            // style={{height:40, flex:7}}
           />
 
           <Dropdown 
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    // marginBottom: 10,
   },
   textInput: {
     height: 40,

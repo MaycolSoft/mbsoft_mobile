@@ -4,10 +4,11 @@ import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Provider, Portal, ActivityIndicator } from 'react-native-paper';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Linking, Alert} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Linking, Alert} from 'react-native';
 import { postRequest, getRequest, deleteRequest, isAxiosError } from '@/api/apiService';
 
 
+import CustomException from '@/Utils/CustomException';
 import Dropdown       from '@/components/Dropdown';
 import Button         from '@/components/Button';
 import Camera         from '@/components/Camera';
@@ -47,6 +48,19 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
   const [imageManagment, setImageManagment] = useState<ImageManagementInterface[]>([]);
   const [imageManagmentRemoved, setImageManagmentRemoved] = useState<ImageManagementInterface[]>([]);
 
+
+  const [modalPreviewImageVisible, setModalPreviewImageVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const openImageModal = (imageUri: string) => {
+    setSelectedImage(imageUri);
+    setModalPreviewImageVisible(true);
+  };
+
+  const closeImageModal = () => {
+    setModalPreviewImageVisible(false);
+    setSelectedImage(null);
+  };
 
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -115,13 +129,19 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
         type: 'success',
         text1: 'Producto guardado correctamente',
       });
-    } catch (error) {
+    } catch (error) {      
       if (isAxiosError(error)) {
         Toast.show({
           type: 'error',
           text1: 'Warning',
           text2: error.response?.data.message || 'Error en la respuesta del servidor',
         })
+      } else if (error instanceof CustomException) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: error.message,
+        });
       } else {
         Toast.show({
           type: 'error',
@@ -176,8 +196,8 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
         text1: 'Éxito',
         text2: 'Imágenes enviadas correctamente.',
       });
-    } catch (error) {
-      throw error
+    } catch (error) {    
+      throw new CustomException({ code: "04", message: 'Imagenes: ' + error.message });
     }
   };
 
@@ -532,33 +552,44 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
                   >
                     <>
                       {product?.images && product.images.map((value, index) => (
-                        <View key={index} style={[
-                          styles.productImageContainer,
-                          {
-                            backgroundColor: product.images[index].deleted_at ? 'rgba(220, 20, 0, 0.4)' : 'transparent',
-                            borderRadius:10,
-                          }
-                        ]}>
-                          <Image
-                            source={
+                        <TouchableOpacity
+                          key={index}
+                          onPress={() =>
+                            openImageModal(
                               value.image_url
-                                ? { uri: value.image_url } // Imagen desde URL
-                                : { uri: `data:image/jpeg;base64,${value.image}` } // Imagen en Base64
+                                ? value.image_url
+                                : `data:image/jpeg;base64,${value.image}`
+                            )
+                          }
+                        >
+                          <View key={index} style={[
+                            styles.productImageContainer,
+                            {
+                              backgroundColor: !product?.images? 'transparent' :product.images[index].deleted_at ? 'rgba(220, 20, 0, 0.4)' : 'transparent',
+                              borderRadius:10,
                             }
-                            style={styles.productImagePreviewImage}
-                          />
-                          <TouchableOpacity
-                            style={styles.productImageDeleteButton}
-                            onPress={() => {
-                              setImageManagmentRemoved((prev) => [...prev, {"id": value.id}]);
-                              
-                              if(product.images)
-                                product.images[index].deleted_at = new Date().toISOString();
-                            }}
-                          >
-                            <Text style={styles.productImageDeleteButtonText}>X</Text>
-                          </TouchableOpacity>
-                        </View>
+                          ]}>
+                            <Image
+                              source={
+                                value.image_url
+                                  ? { uri: value.image_url } // Imagen desde URL
+                                  : { uri: `data:image/jpeg;base64,${value.image}` } // Imagen en Base64
+                              }
+                              style={styles.productImagePreviewImage}
+                            />
+                            <TouchableOpacity
+                              style={styles.productImageDeleteButton}
+                              onPress={() => {
+                                setImageManagmentRemoved((prev) => [...prev, {"id": value.id}]);
+                                
+                                if(product.images)
+                                  product.images[index].deleted_at = new Date().toISOString();
+                              }}
+                            >
+                              <Text style={styles.productImageDeleteButtonText}>X</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </TouchableOpacity>
                       ))}
 
                       {imageManagment.map((value, index) => (
@@ -592,6 +623,65 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
               </>
             )}
           </ScrollView>
+
+          <Portal>
+            <Modal
+              visible={modalPreviewImageVisible}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={closeImageModal}
+            >
+
+              <View style={{ 
+                flex: 1,
+                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                justifyContent: "center",
+                alignItems: "center",// styles.modalContainer
+              }}>
+
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 50,
+                    // right: 50,
+                    // paddingHorizontal: 20,
+                    // paddingVertical: 10,
+                    // backgroundColor: "red",
+                    // borderRadius: 5,
+                  }}
+                >
+                  <Text style={{ color: "white", fontWeight: "bold" }}>Preview</Text>
+                </View>
+
+
+                {selectedImage && (
+                  <Image
+                    source={{ uri: selectedImage }}
+                    style={{
+                      width: "90%",
+                      height: "70%",
+                      resizeMode: "contain",
+                    }}
+                  />
+                )}
+
+
+                <Button 
+                  // size="large"
+                  title="Cerrar"
+                  onPress={closeImageModal}
+                  variant='danger'
+                  icon='close'
+                  style={{
+                    width: "100%",
+                    margin: 10,
+                  }}
+                />
+
+              </View>
+              
+            </Modal>
+          </Portal>
 
           {/* Botones */}
           <View style={styles.footer}>
