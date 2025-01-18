@@ -265,7 +265,8 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
           margin: 2,
           width: itemWidth + 10,   // <--- ancho fijo
           height: cardHeight + 20,
-          backgroundColor: "#fff",
+          backgroundColor: "#fff" ,
+          // backgroundColor: "red" ,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.25,
@@ -411,14 +412,17 @@ const styles = StyleSheet.create({
 
   infoContainer: {
     width: "100%",
-    borderTopWidth: 0.25,
-    borderColor: "#c1c1c1",
+    // borderTopWidth: 0.25,
+    // borderColor: "#c1c1c1",
     position: "relative",
     shadowColor: "#4e4d4d",
+    backgroundColor: "#fff",
+    borderBottomLeftRadius:  5,
+    borderBottomRightRadius: 5,
     // shadowOffset: { width: 0, height: 1 }, // Sombra debajo del borde
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 2, // Para sombra en Android
+    // shadowOpacity: 0.3,
+    // shadowRadius: 2,
+    // elevation: 2, // Para sombra en Android
   },
   descriptionContainer: {
     paddingLeft:2,
@@ -463,7 +467,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
-    backgroundColor: 'rgba(220, 20, 0, 0.5)',
+    // backgroundColor: 'rgba(220, 20, 0, 0.5)',
+    backgroundColor: '#fff',
     borderRadius: 12,
     width: 24,
     height: 24,

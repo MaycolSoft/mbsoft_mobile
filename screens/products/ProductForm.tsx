@@ -580,10 +580,22 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
                             <TouchableOpacity
                               style={styles.productImageDeleteButton}
                               onPress={() => {
+
                                 setImageManagmentRemoved((prev) => [...prev, {"id": value.id}]);
-                                
+
                                 if(product.images)
-                                  product.images[index].deleted_at = new Date().toISOString();
+                                  if(product.images[index].deleted_at){
+                                    product.images[index].deleted_at = null;
+                                    
+                                    const indexToRemove = imageManagmentRemoved.findIndex((item) => item.id == value.id);
+
+                                    if (indexToRemove !== -1) {
+                                      setImageManagmentRemoved((prev) => prev.filter((_, index) => index !== indexToRemove));
+                                    }
+
+                                  }else{
+                                    product.images[index].deleted_at = new Date().toISOString();
+                                  }
                               }}
                             >
                               <Text style={styles.productImageDeleteButtonText}>X</Text>

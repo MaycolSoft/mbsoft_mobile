@@ -104,7 +104,7 @@ const ProductListScreen: React.FC = () => {
           text1: 'Warning',
           text2: error.response?.data.message || 'Error en la respuesta del servidor',
         })
-      } else {
+      } else {        
         Toast.show({
           type: 'error',
           text1: 'Error',
