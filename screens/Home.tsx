@@ -1,86 +1,76 @@
-// HomeScreen.tsx
-import React, {useState} from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import CameraComponent from '@/components/Camera';
+import React, {useEffect} from 'react';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { useNavigation } from '@react-navigation/native';
+import useStore from '@/store/useStore';
 
 
-export default function HomeScreen() {
-  const [isCameraOpen, setIsCameraOpen] = useState(false); // Controla la apertura de la cámara
-  const [images, setImages] = useState<string[]>([]); // Almacena las imágenes capturadas
+//////////////// Screens ////////////////
+import Home        from '@/screens/Home';
+import Portfolio   from '@/screens/Portfolio';
+import Prices      from '@/screens/Prices';
+import Settings    from '@/screens/Settings';
+import LogScreen   from '@/components/LogScreen';
+import Login       from '@/screens/Login';
+import ProductListScreen from '@/screens/products/ProductListScreen';
+import ProductForm from '@/screens/products/ProductForm';
+//////////////// Screens ////////////////
 
-  const handleSendImages = (capturedImages: string[]) => {
-    setImages(capturedImages); // Guarda las imágenes en el estado
-  };
 
+
+const Logout = () => {
+  const navigation = useNavigation();
+  const setAccessToken = useStore((state) => state.setAccessToken);
+
+  useEffect(() => {
+    // Limpia el accessToken y redirige al usuario al LoginScreen
+    setAccessToken(null);
+    // navigation.replace('Login'); // Reemplaza para evitar volver a las pestañas
+  }, []);
+
+  return null; // No renderiza nada ya que solo ejecuta la lógica de logout
+};
+
+
+
+
+const Drawer = createDrawerNavigator();
+
+const App: React.FC = () => {
   return (
-    <View style={styles.container}>
-      {isCameraOpen ? (
-        <CameraComponent
-          onClose={() => setIsCameraOpen(false)} // Cierra la cámara
-          onDone={handleSendImages} // Recibe las imágenes capturadas
-        />
-      ) : (
-        <View style={styles.content}>
-          <TouchableOpacity style={styles.button} onPress={() => setIsCameraOpen(true)}>
-            <Text style={styles.buttonText}>Open Camera</Text>
-          </TouchableOpacity>
+    <Drawer.Navigator 
+      // initialRouteName="ProductListScreen"
+    >
+      <Drawer.Screen 
+        name="Productos"
+        component={ProductListScreen}
+        initialParams={{ useSafeArea: false }}
+        options={{ unmountOnBlur: true }}  
+      />
 
-          {images.length > 0 && (
-            <View style={styles.previewContainer}>
-              <Text style={styles.previewText}>Captured Images:</Text>
-              <View style={styles.previewList}>
-                {images.map((uri, index) => (
-                  <Image key={index} source={{ uri }} style={styles.previewImage} />
-                ))}
-              </View>
-            </View>
-          )}
-        </View>
-      )}
-    </View>
+      <Drawer.Screen name="Settings"  component={Settings} />
+      <Drawer.Screen name="Portfolio" component={Portfolio} />
+      
+      <Drawer.Screen name="Prices"      component={Prices} />
+      <Drawer.Screen name="Http Log"    component={LogScreen} />
+      <Drawer.Screen name="ProductForm" component={ProductForm} />
+
+
+      <Drawer.Screen
+        name="Logout"
+        component={Logout}
+        options={{
+          drawerItemStyle: { backgroundColor: '#f8d7da' }, // Opcional: para personalizar el estilo
+          drawerLabel: "Logout",
+          // drawerIcon: ({ color, size }) => (
+          //   <Icon name="logout" color={color} size={size} />
+          // ),
+          // onPress: () => {
+          //   // Alert.alert('Confirmación', '¿Seguro que deseas cerrar sesión?');
+          // },
+        }}
+      />
+    </Drawer.Navigator>
   );
-}
+};
 
-
-
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: '#f0f0f0',
-  },
-  content: {
-    alignItems: 'center',
-  },
-  button: {
-    backgroundColor: '#007bff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  previewContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  previewText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  previewList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  previewImage: {
-    width: 80,
-    height: 80,
-    margin: 5,
-    borderRadius: 5,
-  },
-});
+export default App;

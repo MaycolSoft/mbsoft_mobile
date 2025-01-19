@@ -1,6 +1,6 @@
 // App.tsx
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import BottomTabs from '@/BottomTabs';
 import Login from '@/screens/Login';
@@ -12,6 +12,9 @@ import Toast, {
 } from "react-native-toast-message";
 
 
+//////////////// Screens ////////////////
+import Home from '@/screens/Home';
+//////////////// Screens ////////////////
 
 const toastProps: BaseToastProps = {
   text1Style: {
@@ -113,7 +116,7 @@ export default function App() {
     <NavigationContainer>
       <View style={styles.container}>
         {showBottomTabs ? (
-          <BottomTabs />
+          <Home />
         ) : (
           <Animated.View style={{ flex: 1, opacity: opacityAnim }}>
             <Login />

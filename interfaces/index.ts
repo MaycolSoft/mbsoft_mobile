@@ -34,8 +34,8 @@ export interface Product {
 
 export interface ProductFormInterface {
   product?: Product;
-  onClose: () => void;
-  onSave: () => void;
+  onClose?: () => void;
+  onSave?: () => void;
 }
 
 export interface CategoriaItem {

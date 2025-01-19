@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Dimensions, View, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { useRoute } from '@react-navigation/native';
 import { Modal, Portal, Provider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -15,9 +16,33 @@ import TextInputField from '@/components/InputField';
 //////////COMPONENTS//////////
 
 
-const MAX_ITEMS = 50;
+
+
+interface WrapperProps {
+  useSafeArea?: boolean; // Booleano para decidir el uso de SafeArea
+  children: React.ReactNode; // Elementos hijos a renderizar
+  style?: object; // Estilos opcionales
+}
+
+
+const SafeAreaWrapper: React.FC<WrapperProps> = ({ useSafeArea = false, children, style }) => {
+  const Container = useSafeArea ? SafeAreaView : View;
+
+  return <Container style={[{ defaultStyle: { flex: 1 } }, style]}>{children}</Container>;
+};
+
+
+
+
+
+
 
 const ProductListScreen: React.FC = () => {
+
+  const route = useRoute();
+  const { useSafeArea } = route.params || {useSafeArea:false}; // Acceso a los parámetros
+
+  const MAX_ITEMS = 50;
   const [products, setProducts] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState<boolean>(false);
@@ -29,9 +54,7 @@ const ProductListScreen: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [filterField, setFilterField] = useState('description');
 
-
-
-
+ 
   const fetchProducts = useCallback(async () => {
     
     if (loading || !hasMore) return;
@@ -150,7 +173,7 @@ const ProductListScreen: React.FC = () => {
 
   return (
     <Provider>
-      <SafeAreaView style={styles.safeContainer}>
+      <SafeAreaWrapper style={styles.safeContainer} useSafeArea={useSafeArea}>
 
         <View style={[styles.searchContainer]}>
           <TextInputField
@@ -202,7 +225,7 @@ const ProductListScreen: React.FC = () => {
           </Modal>
         </Portal>
 
-      </SafeAreaView>
+      </SafeAreaWrapper>
     </Provider>
   );
 };
@@ -276,6 +299,8 @@ const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
     paddingHorizontal: 10,
+    // borderWidth:4,
+    // borderColor:"red"
   },
   container: {
     flex: 1,
