@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Dimensions, View, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useRoute } from '@react-navigation/native';
+import { RouteProp, useRoute } from '@react-navigation/native';
 import { Modal, Portal, Provider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -28,19 +28,26 @@ interface WrapperProps {
 const SafeAreaWrapper: React.FC<WrapperProps> = ({ useSafeArea = false, children, style }) => {
   const Container = useSafeArea ? SafeAreaView : View;
 
-  return <Container style={[{ defaultStyle: { flex: 1 } }, style]}>{children}</Container>;
+
+  let _style = {  }
+  if(!useSafeArea){
+    _style = { flex: 1, marginTop: 10 }
+  }
+
+  return <Container style={[{ defaultStyle: { flex: 1 } }, style, _style ]}>{children}</Container>;
 };
 
 
-
-
-
+type RouteParams = {
+  useSafeArea: boolean;
+};
+type ProductListRouteProp = RouteProp<{ params: RouteParams }, 'params'>;
 
 
 const ProductListScreen: React.FC = () => {
 
-  const route = useRoute();
-  const { useSafeArea } = route.params || {useSafeArea:false}; // Acceso a los parámetros
+  const route = useRoute<ProductListRouteProp>();
+  const { useSafeArea = false } = route.params;
 
   const MAX_ITEMS = 50;
   const [products, setProducts] = useState<Product[]>([]);

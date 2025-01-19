@@ -52,7 +52,7 @@ const App: React.FC = () => {
       
       <Drawer.Screen name="Prices"      component={Prices} />
       <Drawer.Screen name="Http Log"    component={LogScreen} />
-      <Drawer.Screen name="ProductForm" component={ProductForm} />
+      <Drawer.Screen name="Crear Producto" component={ProductForm} />
 
 
       <Drawer.Screen
