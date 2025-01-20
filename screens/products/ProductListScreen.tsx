@@ -10,9 +10,11 @@ import { Product } from '@/interfaces';
 
 //////////COMPONENTS//////////
 import ProductOverlay from './CustomListTest';
+import Button from '@/components/Button';
 import Dropdown from '@/components/Dropdown';
 import ProductForm from './ProductForm';
 import TextInputField from '@/components/InputField';
+import SearchBar from '@/components/SearchBar';
 //////////COMPONENTS//////////
 
 
@@ -181,34 +183,15 @@ const ProductListScreen: React.FC = () => {
   return (
     <Provider>
       <SafeAreaWrapper style={styles.safeContainer} useSafeArea={useSafeArea}>
-
-        <View style={[styles.searchContainer]}>
-          <TextInputField
-            placeholder="Escriba para buscar..."
-            value={searchText}
-            onChangeText={(text) => setSearchText(text)}
-            onSubmitEditing={fetchProducts}
-            // style={{height:40, flex:7}}
-          />
-
-          <Dropdown 
-            onSelect={(option) => setFilterField(`${option.value}`)}
-            options={[
-              { label: 'Descripción', value: 'description' },
-              { label: 'Referencia', value: 'reference' },
-              { label: 'Categoría', value: 'categoria' },
-              { label: 'Unidad', value: 'unidad' },
-              { label: 'Impuesto', value: 'tax' },
-            ]}
-            iconMode={true} // Activa el modo ícono para el dropdown
-            style={{...styles.dropdownStyle, flex:1}}
-          />
-
-          <TouchableOpacity onPress={toggleViewStyle} style={[styles.toggleButton, {flex:0.7}]}>
-            <MaterialIcons name={viewStyle === 'list' ? 'view-module' : 'view-list'} size={24} color="black" />
-          </TouchableOpacity>
-        </View>
-
+ 
+        <SearchBar
+          searchText      = {searchText}
+          setSearchText   = {setSearchText}
+          onSubmitEditing = {fetchProducts}
+          setFilterField  = {setFilterField}
+          toggleViewStyle = {toggleViewStyle}
+          viewStyle       = {viewStyle}
+        />
 
         <View style={styles.container}>
           <ProductOverlay
@@ -228,9 +211,51 @@ const ProductListScreen: React.FC = () => {
             <TouchableOpacity style={styles.closeButton} onPress={() => setShowFormModal(false)}>
               <MaterialIcons name="close" size={24} color="black" />
             </TouchableOpacity>
-            <ProductForm product={selectedProduct} onClose={() => setShowFormModal(false)} onSave={fetchProducts} />
+            {showFormModal &&(
+              <ProductForm product={selectedProduct} onClose={() => setShowFormModal(false)} onSave={fetchProducts} />
+            )}
           </Modal>
         </Portal>
+
+        <View
+          style={
+            {
+              position: 'absolute', // Posición absoluta para que flote
+              bottom: 20, // Distancia desde la parte inferior
+              right: 20, // Distancia desde la derecha
+              // backgroundColor: 'red', // Azul
+              width:  45, // Ancho del botón
+              height: 45, // Alto del botón (igual que el ancho para que sea redondo)
+              borderRadius: 30, // Hace que el botón sea redondo
+              justifyContent: 'center', // Centra el contenido horizontalmente
+              alignItems: 'center', // Centra el contenido verticalmente
+              elevation: 5, // Sombra para Android
+              shadowColor: '#000', // Color de la sombra para iOS
+              shadowOffset: { width: 0, height: 2 }, // Offset de la sombra para iOS
+              shadowOpacity: 0.3, // Opacidad de la sombra para iOS
+              shadowRadius: 3.5, // Radio de la sombra para iOS
+            }
+          }
+        >
+          <Button 
+           title='+'
+           onPress={()=>{
+            setShowFormModal(true);
+           }}
+           style={{
+            width:  45, // Ancho del botón
+            height: 45, // Alto del botón (igual que el ancho para que sea redondo)
+            borderRadius: 30, // Hace que el botón sea redondo
+            justifyContent: 'center', // Centra el contenido horizontalmente
+            alignItems: 'center', // Centra el contenido verticalmente
+            padding: 0
+           }}
+           textStyle={{
+            width: 20,
+            textAlign:'center'
+           }}
+          />
+        </View>
 
       </SafeAreaWrapper>
     </Provider>

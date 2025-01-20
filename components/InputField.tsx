@@ -16,11 +16,12 @@ const TextInputField = (props:TextInputFieldInterface) => {
         placeholder,
         error,
         style={},
+        styleContainer={},
         ...otherProps
     } = props
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, {...styleContainer}]}>
           <TextInput
             style={[styles.input, error ? styles.errorInput : {}, style]}
             placeholder={placeholder}
