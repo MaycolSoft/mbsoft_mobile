@@ -23,7 +23,7 @@ interface ImageManagementInterface {
 
 
 
-const ProductForm = ({ product, onClose }: ProductFormInterface) => {
+const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInterface) => {
   const [formData, setFormData] = useState<Product>({
     "id"          : undefined,
     "reference"   : '',
@@ -123,13 +123,13 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
       await handleSendImages();
       await handleRemoveImages();
 
-      onClose();
+      onSave();
 
       Toast.show({
         type: 'success',
         text1: 'Producto guardado correctamente',
       });
-    } catch (error) {      
+    } catch (error) {
       if (isAxiosError(error)) {
         Toast.show({
           type: 'error',
@@ -697,7 +697,7 @@ const ProductForm = ({ product, onClose }: ProductFormInterface) => {
 
           {/* Botones */}
           <View style={styles.footer}>
-            <Button title="Cancelar" onPress={onClose} variant="danger" />
+            <Button title="Cancelar" onPress={onCancel} variant="danger" />
             <Button title="Guardar" onPress={handleSubmit} variant="primary" />
           </View>
         </View>

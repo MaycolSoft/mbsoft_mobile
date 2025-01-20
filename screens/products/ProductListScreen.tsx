@@ -63,9 +63,9 @@ const ProductListScreen: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [filterField, setFilterField] = useState('description');
 
- 
+
   const fetchProducts = useCallback(async () => {
-    
+
     if (loading || !hasMore) return;
 
     setLoading(true);
@@ -89,7 +89,7 @@ const ProductListScreen: React.FC = () => {
       }
 
       const version2 = true
-      if(version2){
+      if(version2){        
         const response = await postRequest('api/pos/searchProduct', { 
           "include_images"  : 1,
           "per_page" : 35,
@@ -154,25 +154,28 @@ const ProductListScreen: React.FC = () => {
     setViewStyle((prevStyle) => (prevStyle === 'list' ? 'grid' : 'list'));
   };
 
+  const initialFetcProduct = () => {
+    setHasMore(true);
+    setPage(1);
+    setProducts([]);
+  }
+
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [page]);
 
-  // useEffect(() => {
-  //   if (!initialized) {
-  //     setInitialized(true);
-  //     return; // No ejecutar el código en el primer render
-  //   }
+  useEffect(() => {
+    if (!initialized) {
+      setInitialized(true);
+      return; // No ejecutar el código en el primer render
+    }
 
-  //   const delayDebounceFn = setTimeout(() => {
-  //     setHasMore(true);
-  //     setPage(1);
-  //     setProducts([]);
-  //     fetchProducts();
-  //   }, 1000); // Ajusta el tiempo en milisegundos según prefieras, por ejemplo 1000 ms = 1 segundo
+    const delayDebounceFn = setTimeout(() => {
+      initialFetcProduct();
+    }, 1000); // Ajusta el tiempo en milisegundos según prefieras, por ejemplo 1000 ms = 1 segundo
   
-  //   return () => clearTimeout(delayDebounceFn); // Limpia el timeout si el usuario sigue escribiendo
-  // }, [searchText]);
+    return () => clearTimeout(delayDebounceFn); // Limpia el timeout si el usuario sigue escribiendo
+  }, [searchText]);
 
 
   const handleEditProduct = (product: Product) => {
@@ -212,7 +215,10 @@ const ProductListScreen: React.FC = () => {
               <MaterialIcons name="close" size={24} color="black" />
             </TouchableOpacity>
             {showFormModal &&(
-              <ProductForm product={selectedProduct} onClose={() => setShowFormModal(false)} onSave={fetchProducts} />
+              <ProductForm product={selectedProduct} onCancel={() => setShowFormModal(false)} onSave={()=>{
+                initialFetcProduct()
+                setShowFormModal(false)
+              }} />
             )}
           </Modal>
         </Portal>
@@ -367,7 +373,7 @@ const styles = StyleSheet.create({
   // --- Estilos del modal ---
   modalContainer: {
     backgroundColor: '#fff',
-    padding: 8,
+    // padding: 8,
     marginHorizontal: 8,
     borderRadius: 10,
     flex: 1,

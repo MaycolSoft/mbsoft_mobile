@@ -34,7 +34,7 @@ export interface Product {
 
 export interface ProductFormInterface {
   product?: Product;
-  onClose?: () => void;
+  onCancel?: () => void;
   onSave?: () => void;
 }
 
