@@ -37,7 +37,7 @@
     "expo-splash-screen": "^0.29.18",
     "expo-status-bar": "^2.0.0",
     "expo-system-ui": "^4.0.6",
-    "expo-web-browser": "^14.0.1",
+    "expo-web-browser": "~14.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-native": "^0.76.5",
@@ -51,7 +51,8 @@
     "react-native-toast-message": "^2.2.1",
     "react-native-web": "~0.19.10",
     "undefined": "@react-navigation/drawer:6.7.2",
-    "zustand": "^5.0.1"
+    "zustand": "^5.0.1",
+    "react-native-webview": "13.12.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

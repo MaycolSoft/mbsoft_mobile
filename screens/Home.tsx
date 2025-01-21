@@ -2,15 +2,16 @@ import React, {useEffect} from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import useStore from '@/store/useStore';
+import { Alert } from 'react-native';
 
+import type { StackNavigationProp } from '@react-navigation/stack';
 
 //////////////// Screens ////////////////
-import Home        from '@/screens/Home';
 import Portfolio   from '@/screens/Portfolio';
 import Prices      from '@/screens/Prices';
 import Settings    from '@/screens/Settings';
 import LogScreen   from '@/components/LogScreen';
-import Login       from '@/screens/Login';
+import Iframe      from '@/components/Iframe';
 import ProductListScreen from '@/screens/products/ProductListScreen';
 import ProductForm from '@/screens/products/ProductForm';
 //////////////// Screens ////////////////
@@ -18,7 +19,6 @@ import ProductForm from '@/screens/products/ProductForm';
 
 
 const Logout = () => {
-  const navigation = useNavigation();
   const setAccessToken = useStore((state) => state.setAccessToken);
 
   useEffect(() => {
@@ -31,11 +31,17 @@ const Logout = () => {
 };
 
 
+type NavigationProp = StackNavigationProp<{
+  [key: string]: any; // Permitir propiedades adicionales
+}>;
 
-
-const Drawer = createDrawerNavigator();
 
 const App: React.FC = () => {
+  
+  const navigation = useNavigation<NavigationProp>();
+  const Drawer = createDrawerNavigator ();
+
+
   return (
     <Drawer.Navigator 
       // initialRouteName="ProductListScreen"
@@ -46,9 +52,42 @@ const App: React.FC = () => {
         initialParams={{ useSafeArea: false }}
         options={{ unmountOnBlur: true }}  
       />
+{/* <Drawer.Screen 
+  name="Telescope222" 
+  component={Iframe} 
+  options={{ unmountOnBlur: true }} 
+/> */}
+      {/* <Drawer.Screen name="Telescope"   component={Iframe}  options={{ unmountOnBlur: true }}  /> */}
+      <Drawer.Screen 
+        name="Telescope"
+        component={Iframe}
+        listeners={{
+          drawerItemPress: (e) => {
+            e.preventDefault(); // Evitar navegación predeterminada
 
-      <Drawer.Screen name="Settings"  component={Settings} />
-      <Drawer.Screen name="Portfolio" component={Portfolio} />
+            Alert.alert(
+              "Abrir Telescope",
+              "¿Cómo deseas abrir la página?",
+              [
+                {
+                  text: "WebView",
+                  onPress: () =>  navigation.navigate('Telescope', { openInWebView: true }),
+                },
+                {
+                  text: "Navegador Externo",
+                  onPress: () => navigation.navigate('Telescope', { openInWebView: false }),
+                },
+                { text: "Cancelar", style: "cancel" },
+              ]
+            );
+          },
+        }}
+        options={{ unmountOnBlur: true }}
+      />
+
+
+      <Drawer.Screen name="Settings"    component={Settings} />
+      <Drawer.Screen name="Portfolio"   component={Portfolio} />
       
       <Drawer.Screen name="Prices"      component={Prices} />
       <Drawer.Screen name="Http Log"    component={LogScreen} />
