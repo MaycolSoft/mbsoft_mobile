@@ -2,7 +2,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import BottomTabs from '@/BottomTabs';
 import Login from '@/screens/Login';
 import useStore from '@/store/useStore';
 import Toast, {
@@ -91,7 +90,7 @@ const toastConfig: ToastConfig = {
 export default function App() {
   const accessToken = useStore((state) => state.accessToken);
   const opacityAnim = useRef(new Animated.Value(1)).current;
-  const [showBottomTabs, setShowBottomTabs] = useState(false); // Estado para controlar qué pantalla mostrar
+  const [showHomeScreen, setShowHomeScreen] = useState(false); // Estado para controlar qué pantalla mostrar
 
   useEffect(() => {
     if (accessToken) {
@@ -101,12 +100,12 @@ export default function App() {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
-        // Al terminar la animación, muestra BottomTabs y reinicia la opacidad
-        setShowBottomTabs(true);
+        // Al terminar la animación, muestra HomeScreen y reinicia la opacidad
+        setShowHomeScreen(true);
         opacityAnim.setValue(1); // Reinicia la opacidad para futuras transiciones
       });
     } else {
-      setShowBottomTabs(false); // Muestra Login si no hay accessToken
+      setShowHomeScreen(false); // Muestra Login si no hay accessToken
       opacityAnim.setValue(1);  // Asegura que Login sea visible
     }
   }, [accessToken]);
@@ -115,7 +114,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <View style={styles.container}>
-        {showBottomTabs ? (
+        {showHomeScreen ? (
           <Home />
         ) : (
           <Animated.View style={{ flex: 1, opacity: opacityAnim }}>
