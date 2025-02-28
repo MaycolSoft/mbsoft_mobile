@@ -3,7 +3,7 @@ import { View, Text, Image, useWindowDimensions, StyleSheet } from 'react-native
 import Carousel, { ICarouselInstance, Pagination } from 'react-native-reanimated-carousel';
 import { useSharedValue } from 'react-native-reanimated';
 
-function CarouselExample() {
+export default function App() {
   const { width } = useWindowDimensions();
   const ref = React.useRef<ICarouselInstance>(null);
   const progress = useSharedValue(0);
@@ -58,6 +58,3 @@ const styles = StyleSheet.create({
   dotStyle: { backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 50 },
   paginationContainer: { gap: 5, marginTop: 10 },
 });
-
-
-export default CarouselExample
