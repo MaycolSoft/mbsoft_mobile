@@ -6,7 +6,7 @@ import { postRequest, isAxiosError } from '@/api/apiService';
 import useStore from '@/store/useStore';
 import TextInputField from '@/components/InputField';
 import CheckBox from '@/components/CheckBox';
-
+import CarouselExample from '@/components/Carousel';
 
 const LoginScreen = () => {
   const [idEmpresa, setIdEmpresa] = useState('1001');
@@ -144,6 +144,31 @@ const LoginScreen = () => {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
+
+        {/* <View style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 15, // Espacio entre elementos
+          justifyContent: 'center'
+        }}>
+          {Array.from({ length: 25 }).map((_, index) => (
+            <View
+              key={index} 
+              style={{
+              // display:"flex",
+              // flexDirection: 'row', 
+              // alignItems: 'center',
+              // borderRadius: 3,
+              // backgroundColor: '#333',
+              width  : 65,
+              height : 45,
+            }}>
+              <CarouselExample 
+                text={["HOLA", "mundo",  "Hello"]}
+               /> 
+            </View>
+          ))}
+        </View> */}
 
           <TouchableWithoutFeedback onPress={handlePress}>
             <Animated.Text style={[styles.title, { transform: [{ scale: scaleValue }] }]}>

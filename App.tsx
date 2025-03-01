@@ -2,8 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
-import CarouselExample from './components/CarouselExample';
+
 
 import Toast, {
   BaseToast,
@@ -114,19 +113,6 @@ export default function App() {
       opacityAnim.setValue(1);  // Asegura que Login sea visible
     }
   }, [accessToken]);
-
-
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* <GestureDetector gesture={tapGestureHandler}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>¡Haz clic aquí para probar!</Text>
-        </View>
-      </GestureDetector> */}
-      <CarouselExample/>
-    </GestureHandlerRootView>
-  );
-
 
 
   return (

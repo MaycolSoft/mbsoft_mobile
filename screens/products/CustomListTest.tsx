@@ -11,9 +11,13 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { Product , ProductOverlayProps } from '@/interfaces';
-import { Marquee } from '@animatereactnative/marquee';
+// import { Marquee } from '@animatereactnative/marquee';
 import Toast from 'react-native-toast-message';
+
+import { Product , ProductOverlayProps } from '@/interfaces';
+import Carousel from '@/components/Carousel';
+
+
 
 
 
@@ -24,15 +28,12 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
   numColumns   = 5, // Default to 2 columns
   onEndReached = ()=>{},
 }) => {
-  const DEFAULT_IMAGE =
-    'https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg';
 
+  const DEFAULT_IMAGE = 'https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg';
   const screenWidth = Dimensions.get('window').width;
 
-
-
-
-
+  const [parentWidth, setParentWidth] = React.useState(0);
+  const [parentHeight, setParentHeight] = React.useState(0);
 
   const AnimatedText = ({ text }: { text: string }) => {
     const scrollX = useRef(new Animated.Value(0)).current;
@@ -88,173 +89,10 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
     );
   };
 
-
-
-
-
-
   const renderItem1 = ({ item }: { item: Product }) => {
-    const image = item.images?.[0] || DEFAULT_IMAGE;
-    const itemWidth = screenWidth / numColumns - 20; // Adjust width based on columns
-
-    return (
-      <TouchableOpacity
-        style={[styles.card, { width: itemWidth }]}
-        onPress={() => onPress && onPress(item)}
-      >
-        {/* Imagen del producto */}
-        {/* <Image source={{ uri: image }} style={[styles.cardImage, { height: itemWidth }]} /> */}
-        <ScrollView
-          style={[styles.cardImage, { height: itemWidth }]}
-          contentContainerStyle={styles.productImagePreviewList}
-          horizontal
-          showsHorizontalScrollIndicator={false} // Opcional: Ocultar el indicador de scroll
-        >
-         {item?.images && item.images.map((value, index) => (
-            <Image 
-              key={index}
-              source={
-                value.image_url
-                  ? { uri: value.image_url } // Imagen desde URL
-                  : { uri: `data:image/jpeg;base64,${value.image}` } // Imagen en Base64
-              }
-              style={[
-                styles.cardImage,
-                { 
-                  // borderWidth:0.25,
-                  // borderColor:"black",
-                  height: itemWidth,
-                  width: itemWidth-20
-                }
-              ]}
-              />
-          ))}
-        </ScrollView>
-
-        {/* Contenedor de información */}
-        <View style={styles.infoContainer}>
-          <View style={[styles.descriptionContainer]}>
-            <AnimatedText text={item.description} />
-          </View>
-          <View style={styles.priceContainer}>
-            <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-
-
-  const renderItem = ({ item }: { item: Product }) => {
     const itemWidth = screenWidth / numColumns - 20; // Adjust width based on columns
     const cardHeight = itemWidth * 1.2; // Define a consistent height-to-width ratio
 
-    // return (
-    //   <View
-    //     style={{
-    //       borderWidth: 0.25,
-    //       borderColor: "gray",
-    //       borderRadius: 8,
-    //       margin: 2,
-    //       width: itemWidth+10,
-    //       height: cardHeight + 20,
-    //       overflow: "visible", // Allow shadow to extend beyond border
-    //       backgroundColor: "#fff",
-    //       shadowColor: "#000",
-    //       shadowOffset: { width: 0, height: 2 },
-    //       shadowOpacity: 0.25,
-    //       shadowRadius: 3.84,
-    //       elevation: 5, // For Android shadow
-    //     }}
-    //   >
-    //     {/* Imagen del producto */}
-    //     <ScrollView
-    //       style={{
-    //         // flex: 1,
-    //         // borderWidth: 1,
-    //         // borderColor: "red",
-    //         minHeight:cardHeight*0.7,
-    //         maxHeight:cardHeight*0.7,
-    //       }}
-    //       contentContainerStyle={{
-    //         // justifyContent: "center",
-    //         // alignItems: "center",
-    //       }}
-    //       horizontal
-    //       pagingEnabled
-    //       showsHorizontalScrollIndicator={false}
-
-    //     >
-    //       {/* DEFAULT_IMAGE */}
-    //       {(!item?.images || item.images.length == 0 )&& (
-    //         <View
-    //           key={0}
-    //           style={{
-    //             width: '100%',
-    //             minWidth: '100%',
-    //             maxHeight: '100%',
-    //             minHeight: '100%',
-    //           }}
-    //         >
-    //           <Image
-    //             source={{ uri: DEFAULT_IMAGE}}
-    //             style={{
-    //               width: "100%",
-    //               height: "100%",
-    //               resizeMode: "contain", // Maintain aspect ratio within the container
-    //             }}
-    //           />
-    //         </View>
-    //       )}
-
-    //       {item?.images && item.images.map((value, index) => (
-    //         <View
-    //           key={index}
-    //           style={{
-    //             width: '100%',
-    //             minWidth: '100%',
-    //             maxHeight: '100%',
-    //             minHeight: '100%',
-    //           }}
-    //         >
-    //           <Image
-    //             source={
-    //               // value.image_url && value.image
-    //               value.image_url
-    //                 ? { uri: value.image_url } // Imagen desde URL
-    //                 : { uri: `data:image/jpeg;base64,${value.image}` } // Imagen en Base64
-    //             }
-    //             style={{
-    //               width: "100%",
-    //               height: "100%",
-    //               resizeMode: "contain", // Maintain aspect ratio within the container
-    //               borderRadius: 8,
-    //             }}
-    //           />
-    //         </View>
-    //       ))}
-    //     </ScrollView>
-
-    //     {/* Contenedor de información */}
-    //     <TouchableOpacity
-    //       onPress={() => onPress && onPress(item)}
-    //     >
-    //       <View style={[
-    //         styles.infoContainer
-    //       ]}>
-    //         <View style={[
-    //           styles.descriptionContainer
-    //         ]}>
-    //           <AnimatedText text={item.description} />
-    //         </View>
-    //         <View style={styles.priceContainer}>
-    //           <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
-    //         </View>
-    //       </View>
-    //     </TouchableOpacity>
-    //   </View>
-    // );
     return(
       <View
         style={{
@@ -365,6 +203,85 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
     )
   };
 
+  const renderItem = ({ item }: { item: Product }) => {
+    const itemWidth = screenWidth / numColumns - 20; // Adjust width based on columns
+    const cardHeight = itemWidth * 1.2; // Define a consistent height-to-width ratio
+
+    return(
+      <View
+        onLayout={(event) => {
+          const { width, height } = event.nativeEvent.layout;
+          setParentWidth(width);
+          setParentHeight(height);
+        }}
+        style={{
+          // Tu card
+          borderWidth: 0.25,
+          borderColor: "gray",
+          borderRadius: 8,
+          margin: 2,
+          width: itemWidth + 10,   // <--- ancho fijo
+          height: cardHeight + 20,
+          backgroundColor: "#fff" ,
+          // backgroundColor: "red" ,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+          elevation: 5,
+        }}
+      >
+
+        <View
+          style={{
+            width: itemWidth + 10,             // <--- ANCHO IGUAL que el padre
+            minHeight: cardHeight * 0.7,
+            maxHeight: cardHeight * 0.7,
+          }}
+        >
+          <Carousel
+            // text={['HOLA', 'mundo',  'Hello', 'texto de ejemplo', 'otro texto']}
+            images={
+              (!item?.images || item.images.length === 0) ?
+              [
+                {
+                  "id"  : item.id??'new',
+                  "uri" : DEFAULT_IMAGE
+                }
+              ]
+              :
+              item?.images?.map((value, index) => ({
+                "id"  : value.id ?? `new-${index}`,
+                "uri" : value.image_url ?? `data:image/jpeg;base64,${value.image}`
+              }))
+          }
+          />
+        </View>
+
+         {/* Contenedor de información */}
+        <TouchableOpacity
+          onPress={() => onPress && onPress(item)}
+        >
+          <View style={[
+            styles.infoContainer,
+            {
+              width:parentWidth *0.9
+            }
+          ]}>
+            <View style={[
+              styles.descriptionContainer
+            ]}>
+              <AnimatedText text={item.description} />
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    )
+  };
+
 
 
   return (
@@ -377,15 +294,19 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
       onEndReached={onEndReached} // Llama a tu función para cargar más productos
       onEndReachedThreshold={1} // Carga más cuando el scroll llega al 50% del final
       // ListFooterComponent={loading && <ActivityIndicator size="small" />}
-      ListFooterComponent={<>
-        { loading && (
-          <ActivityIndicator size={"large"} color="#0000ff" />
-        )}
-      </>}
+      ListFooterComponent={
+        <>
+          { loading && (
+            <ActivityIndicator size={"large"} color="#0000ff" />
+          )}
+        </>
+      }
     />
   );
 
 };
+
+
 
 const styles = StyleSheet.create({
   list: {
