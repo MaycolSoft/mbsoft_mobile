@@ -9,6 +9,12 @@ import Login from '@/screens/Login';
 import useStore from '@/store/useStore';
 import Home from '@/screens/Home';
 
+
+import { StyledProvider } from '@gluestack-ui/themed';
+import { OverlayProvider } from '@gluestack-ui/overlay';
+import { config as gluestackConfig } from '@gluestack-ui/config';
+
+
 ////////////////////////////
 const Stack = createStackNavigator();
 
@@ -103,47 +109,52 @@ const toastConfig: ToastConfig = {
   ),
 };
 
+
   return (
-    <NavigationContainer theme={theme}>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <StyledProvider config={gluestackConfig}>
+      <OverlayProvider>
+        <NavigationContainer theme={theme}>
+          <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
 
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            ...TransitionPresets.SlideFromRightIOS,
-            cardStyleInterpolator: ({ current, layouts }) => ({
-              cardStyle: {
-                transform: [
-                  {
-                    translateX: current.progress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [layouts.screen.width, 0],
-                    }),
-                  }
-                ],
-              },
-            }),
-          }}>
-          
-          {accessToken ? (
-            <Stack.Screen name="Home" component={Home} />
-          ) : (
-            <Stack.Screen 
-              name="Login" 
-              component={Login}
-              options={{
-                transitionSpec: {
-                  open: { animation: 'timing', config: { duration: 500 } },
-                  close: { animation: 'timing', config: { duration: 300 } },
-                },
-              }}
-            />
-          )}
-        </Stack.Navigator>
+            <Stack.Navigator
+              screenOptions={{
+                headerShown: false,
+                ...TransitionPresets.SlideFromRightIOS,
+                cardStyleInterpolator: ({ current, layouts }) => ({
+                  cardStyle: {
+                    transform: [
+                      {
+                        translateX: current.progress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [layouts.screen.width, 0],
+                        }),
+                      }
+                    ],
+                  },
+                }),
+              }}>
+              
+              {accessToken ? (
+                <Stack.Screen name="Home" component={Home} />
+              ) : (
+                <Stack.Screen 
+                  name="Login" 
+                  component={Login}
+                  options={{
+                    transitionSpec: {
+                      open: { animation: 'timing', config: { duration: 500 } },
+                      close: { animation: 'timing', config: { duration: 300 } },
+                    },
+                  }}
+                />
+              )}
+            </Stack.Navigator>
 
-        <Toast config={toastConfig} />
-      </View>
-    </NavigationContainer>
+            <Toast config={toastConfig} />
+          </View>
+        </NavigationContainer>
+      </OverlayProvider>
+    </StyledProvider>
   );
 }
 

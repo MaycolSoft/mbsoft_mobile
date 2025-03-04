@@ -8,6 +8,7 @@ import TextInputField from '@/components/InputField';
 import CheckBox from '@/components/CheckBox';
 
 
+import Input from '@/components/Input';
 
 const LoginScreen = () => {
   const { config } = useStore();
@@ -164,8 +165,8 @@ const LoginScreen = () => {
               alignItems: 'center', 
               marginBottom: 20 
             }}>
-              <Text style={[{ marginRight: 10, fontSize: 16 }, textStyle]}>ID de Empresa</Text>
-              <TextInputField
+              {/* <Text style={[{ marginRight: 10, fontSize: 16 }, textStyle]}>ID de Empresa</Text> */}
+              {/* <TextInputField
                 placeholder="Empresa"
                 keyboardType="numeric"
                 value={idEmpresa}
@@ -176,6 +177,14 @@ const LoginScreen = () => {
                   width:100,
                   height: 45,
                 }}
+              /> */}
+              <Input
+                label="Empresa"
+                placeholder="Codigo Empresa"
+                iconName="business"
+                iconPosition="right"
+                keyboardType='numeric'
+                // error={errorMessage}
               />
             </View>
           )}
