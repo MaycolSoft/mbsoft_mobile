@@ -7,14 +7,21 @@ import {
   TextStyle,
   ViewStyle,
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons'; // Librería de íconos
+import { MaterialIcons, MaterialCommunityIcons, Ionicons, EvilIcons } from '@expo/vector-icons'; // Librería de íconos
+////////////////////////////
 type MaterialIconsName = keyof typeof MaterialIcons.glyphMap;
+type MaterialCommunityIconsName = keyof typeof MaterialCommunityIcons.glyphMap;
+type IoniconsName = keyof typeof Ionicons.glyphMap;
+type EvilIconsName = keyof typeof EvilIcons.glyphMap;
+////////////////////////////
+import useStore from '@/store/useStore';
+
 
 
 interface CustomButtonProps {
   title?: string; // El título ahora es opcional si se usa un ícono
   onPress: () => void;
-  icon?: MaterialIconsName; // Nombre del ícono (opcional)
+  icon?: MaterialIconsName | MaterialCommunityIconsName | IoniconsName | EvilIconsName; // Nombre del ícono (opcional)
   variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'info' | 'dark' | 'light'; // Variantes del botón
   color?: string; // Color personalizado opcional
   disabled?: boolean;
@@ -38,6 +45,10 @@ const Button: React.FC<CustomButtonProps> = ({
   style,
   textStyle,
 }) => {
+
+
+  const { config } = useStore();
+
   // Estilos base combinados con props específicas
   const buttonStyle = [
     styles.button,
@@ -55,19 +66,23 @@ const Button: React.FC<CustomButtonProps> = ({
     textStyle, // Estilo adicional para el texto
   ];
 
-  // return (
-  //   <TouchableOpacity
-  //     onPress={onPress}
-  //     disabled={disabled || loading}
-  //     style={buttonStyle}
-  //   >
-  //     {loading ? (
-  //       <ActivityIndicator size="small" color="#fff" />
-  //     ) : (
-  //       <Text style={textStyleCombined}>{title}</Text>
-  //     )}
-  //   </TouchableOpacity>
-  // );
+  const getIconComponent = (name: string, size: number, color: string, style?: any) => {
+    if (name in MaterialIcons.glyphMap) {
+      return <MaterialIcons name={name as keyof typeof MaterialIcons.glyphMap} size={size} color={color} style={style} />;
+    }
+    if (name in MaterialCommunityIcons.glyphMap) {
+      return <MaterialCommunityIcons name={name as keyof typeof MaterialCommunityIcons.glyphMap} size={size} color={color} style={style} />;
+    }
+    if (name in Ionicons.glyphMap) {
+      return <Ionicons name={name as keyof typeof Ionicons.glyphMap} size={size} color={color} style={style} />;
+    }
+    if (name in EvilIcons.glyphMap) {
+      return <EvilIcons name={name as keyof typeof EvilIcons.glyphMap} size={size} color={color} style={style} />;
+    }
+    return <MaterialIcons name="error" size={size} color={color} style={style} />;
+  };
+
+
 
   return (
     <TouchableOpacity
@@ -79,7 +94,8 @@ const Button: React.FC<CustomButtonProps> = ({
         <ActivityIndicator size="small" color="#fff" />
       ) : (
         <>
-          {icon && <MaterialIcons name={icon} size={20} color="#fff" style={{ marginRight: title ? 8 : 0 }} />}
+          {/* {icon && <MaterialIcons name={icon} size={20} color="#fff" style={{ marginRight: title ? 8 : 0 }} />} */}
+          {icon && getIconComponent(icon, 20, config.darkMode?'#fff':'#333', { marginRight: title ? 8 : 0 })}
           {title && <Text style={textStyleCombined}>{title}</Text>}
         </>
       )}

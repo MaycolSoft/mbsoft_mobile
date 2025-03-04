@@ -1,23 +1,16 @@
 // App.tsx
-import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-
-
-import Toast, {
-  BaseToast,
-  BaseToastProps,
-  ToastConfig,
-} from "react-native-toast-message";
-
-
+import React, { useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { NavigationContainer, Theme } from '@react-navigation/native';
+import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
+import Toast, { BaseToast, BaseToastProps, ToastConfig } from "react-native-toast-message";
 
 import Login from '@/screens/Login';
 import useStore from '@/store/useStore';
-
-//////////////// Screens ////////////////
 import Home from '@/screens/Home';
-//////////////// Screens ////////////////
+
+////////////////////////////
+const Stack = createStackNavigator();
 
 const toastProps: BaseToastProps = {
   text1Style: {
@@ -33,6 +26,30 @@ const toastProps: BaseToastProps = {
     paddingHorizontal: 0,
   },
 };
+////////////////////////////
+
+
+
+
+
+export default function App() {
+  const { accessToken, config } = useStore();
+  
+  const resolvedTheme = config.darkMode ? 'dark' : 'light';
+
+
+  const theme: Theme = useMemo(() => ({
+    dark: resolvedTheme === 'dark',
+    colors: {
+      primary: resolvedTheme === 'dark' ? '#BB86FC' : '#6200EE',
+      background: resolvedTheme === 'dark' ? '#121212' : '#FFFFFF',
+      card: resolvedTheme === 'dark' ? '#1E1E1E' : '#F8F9FA',
+      text: resolvedTheme === 'dark' ? '#FFFFFF' : '#000000',
+      border: resolvedTheme === 'dark' ? '#383838' : '#E8E8E8',
+      notification: resolvedTheme === 'dark' ? '#FF0266' : '#FF453A',
+    },
+  }), [resolvedTheme]);
+
 
 
 const toastConfig: ToastConfig = {
@@ -41,11 +58,14 @@ const toastConfig: ToastConfig = {
       {...props}
       {...toastProps}
       style={[
-        toastProps.style,
-        {
-          borderLeftColor: "#69C779",
+        { 
+          borderLeftColor: '#69C779',
+          backgroundColor: theme.colors.card,
         },
+        toastProps.style
       ]}
+      text1Style={[toastProps.text1Style, { color: theme.colors.text }]}
+      text2Style={[toastProps.text2Style, { color: theme.colors.text }]}
     />
   ),
   error: (props: BaseToastProps) => (
@@ -83,48 +103,44 @@ const toastConfig: ToastConfig = {
   ),
 };
 
-
-
-
-
-
-
-
-
-export default function App() {
-  const accessToken = useStore((state) => state.accessToken);
-  const opacityAnim = useRef(new Animated.Value(1)).current;
-  const [showHomeScreen, setShowHomeScreen] = useState(false); // Estado para controlar qué pantalla mostrar
-
-  useEffect(() => {
-    if (accessToken) {
-      // Desvanece el Login
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        // Al terminar la animación, muestra HomeScreen y reinicia la opacidad
-        setShowHomeScreen(true);
-        opacityAnim.setValue(1); // Reinicia la opacidad para futuras transiciones
-      });
-    } else {
-      setShowHomeScreen(false); // Muestra Login si no hay accessToken
-      opacityAnim.setValue(1);  // Asegura que Login sea visible
-    }
-  }, [accessToken]);
-
-
   return (
-    <NavigationContainer>
-      <View style={styles.container}>
-        {showHomeScreen ? (
-          <Home />
-        ) : (
-          <Animated.View style={{ flex: 1, opacity: opacityAnim }}>
-            <Login />
-          </Animated.View>
-        )}
+    <NavigationContainer theme={theme}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            ...TransitionPresets.SlideFromRightIOS,
+            cardStyleInterpolator: ({ current, layouts }) => ({
+              cardStyle: {
+                transform: [
+                  {
+                    translateX: current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [layouts.screen.width, 0],
+                    }),
+                  }
+                ],
+              },
+            }),
+          }}>
+          
+          {accessToken ? (
+            <Stack.Screen name="Home" component={Home} />
+          ) : (
+            <Stack.Screen 
+              name="Login" 
+              component={Login}
+              options={{
+                transitionSpec: {
+                  open: { animation: 'timing', config: { duration: 500 } },
+                  close: { animation: 'timing', config: { duration: 300 } },
+                },
+              }}
+            />
+          )}
+        </Stack.Navigator>
+
         <Toast config={toastConfig} />
       </View>
     </NavigationContainer>

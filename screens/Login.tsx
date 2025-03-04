@@ -6,10 +6,12 @@ import { postRequest, isAxiosError } from '@/api/apiService';
 import useStore from '@/store/useStore';
 import TextInputField from '@/components/InputField';
 import CheckBox from '@/components/CheckBox';
-import CarouselExample from '@/components/Carousel';
+
+
 
 const LoginScreen = () => {
-  const [idEmpresa, setIdEmpresa] = useState('1001');
+  const { config } = useStore();
+  const [idEmpresa, setIdEmpresa] = useState('1000');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin');
   const [remember, setRemember] = useState(false);
@@ -137,6 +139,10 @@ const LoginScreen = () => {
     }
   };
 
+  const textStyle = {
+    color: config.darkMode ? '#fff' : 'black',
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -145,33 +151,8 @@ const LoginScreen = () => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
 
-        {/* <View style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 15, // Espacio entre elementos
-          justifyContent: 'center'
-        }}>
-          {Array.from({ length: 25 }).map((_, index) => (
-            <View
-              key={index} 
-              style={{
-              // display:"flex",
-              // flexDirection: 'row', 
-              // alignItems: 'center',
-              // borderRadius: 3,
-              // backgroundColor: '#333',
-              width  : 65,
-              height : 45,
-            }}>
-              <CarouselExample 
-                text={["HOLA", "mundo",  "Hello"]}
-               /> 
-            </View>
-          ))}
-        </View> */}
-
           <TouchableWithoutFeedback onPress={handlePress}>
-            <Animated.Text style={[styles.title, { transform: [{ scale: scaleValue }] }]}>
+            <Animated.Text style={[styles.title, textStyle, { transform: [{ scale: scaleValue }] }]}>
               Iniciar Sesión
             </Animated.Text>
           </TouchableWithoutFeedback> 
@@ -183,7 +164,7 @@ const LoginScreen = () => {
               alignItems: 'center', 
               marginBottom: 20 
             }}>
-              <Text style={{ marginRight: 10, fontSize: 16 }}>ID de Empresa</Text>
+              <Text style={[{ marginRight: 10, fontSize: 16 }, textStyle]}>ID de Empresa</Text>
               <TextInputField
                 placeholder="Empresa"
                 keyboardType="numeric"
@@ -216,7 +197,7 @@ const LoginScreen = () => {
           />
 
           <View style={styles.rememberContainer}>
-            <Text style={styles.rememberText}>Recordar</Text>
+            <Text style={[styles.rememberText, textStyle]}>Recordar</Text>
             {/* <TouchableOpacity
               style={[styles.checkbox, remember ? styles.checkboxSelected : null]}
               onPress={() => setRemember(!remember)}
@@ -231,7 +212,7 @@ const LoginScreen = () => {
 
 
           <TouchableOpacity
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            style={[styles.loginButton, loading && { backgroundColor: config.darkMode ? '#333' : '#07608f' }]}
             onPress={handleLogin}
             disabled={loading}
           >
@@ -252,7 +233,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
-    backgroundColor: '#f5f5f5',
+    // backgroundColor: '#f5f5f5',
   },
   title: {
     fontSize: 24,

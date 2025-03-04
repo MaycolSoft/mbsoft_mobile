@@ -1,10 +1,10 @@
 import React, {useEffect} from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
-import useStore from '@/store/useStore';
 import { Alert } from 'react-native';
-
 import type { StackNavigationProp } from '@react-navigation/stack';
+
+import useStore from '@/store/useStore';
 
 //////////////// Screens ////////////////
 import Portfolio   from '@/screens/Portfolio';
@@ -19,7 +19,7 @@ import ProductForm from '@/screens/products/ProductForm';
 
 
 const Logout = () => {
-  const setAccessToken = useStore((state) => state.setAccessToken);
+  const { setAccessToken } = useStore();
 
   useEffect(() => {
     // Limpia el accessToken y redirige al usuario al LoginScreen
@@ -38,6 +38,7 @@ type NavigationProp = StackNavigationProp<{
 
 const App: React.FC = () => {
   
+  const { config } = useStore();
   const navigation = useNavigation<NavigationProp>();
   const Drawer = createDrawerNavigator ();
 
@@ -52,12 +53,7 @@ const App: React.FC = () => {
         initialParams={{ useSafeArea: false }}
         options={{ unmountOnBlur: true }}  
       />
-{/* <Drawer.Screen 
-  name="Telescope222" 
-  component={Iframe} 
-  options={{ unmountOnBlur: true }} 
-/> */}
-      {/* <Drawer.Screen name="Telescope"   component={Iframe}  options={{ unmountOnBlur: true }}  /> */}
+
       <Drawer.Screen 
         name="Telescope"
         component={Iframe}
@@ -98,7 +94,9 @@ const App: React.FC = () => {
         name="Logout"
         component={Logout}
         options={{
-          drawerItemStyle: { backgroundColor: '#f8d7da' }, // Opcional: para personalizar el estilo
+          drawerItemStyle: {
+            backgroundColor: config.darkMode ? '#333' : '#ececec', 
+          }, // Opcional: para personalizar el estilo
           drawerLabel: "Logout",
           // drawerIcon: ({ color, size }) => (
           //   <Icon name="logout" color={color} size={size} />

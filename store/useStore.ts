@@ -1,25 +1,56 @@
 // store/useStore.ts
 import { create } from 'zustand/react';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Importa AsyncStorage
+
 
 interface StoreState {
-  count: number;
-  increaseCount: () => void;
-  resetCount: () => void;
-  
   accessToken: string | null;
   setAccessToken: (token: string|null) => void;
   removeAccessToken: () => void;
+  toggleDarkMode: () => void;
+  updateConfig: (partialConfig: Partial<AppConfig>) => void;
+  [key: string]: any; // Agrega esta línea para permitir propiedades adicionales
 }
 
-const useStore = create<StoreState>((set) => ({
-  count: 0,
-  increaseCount: () => set((state) => ({ count: state.count + 1 })),
-  resetCount: () => set({ count: 0 }),
+interface AppConfig {
+  darkMode: boolean;
+  language: string;
+  // Agrega más configuraciones si necesitas
+}
 
-  setAccessToken: (token) => set({ accessToken: token }),
-  removeAccessToken: () => set({ accessToken: null }),
-  accessToken: null,
-}));
+const initialConfig: AppConfig = {
+  darkMode: false,
+  language: 'es',
+};
+
+const useStore = create<StoreState>()(
+  persist(
+    (set) => ({
+      accessToken: null,
+      config: initialConfig,
+
+      setAccessToken: (token) => set({ accessToken: token }),
+      removeAccessToken: () => set({ accessToken: null }),
+      toggleDarkMode: () => set((state) => ({
+        config: { ...state.config, darkMode: !state.config.darkMode }
+      })),
+      updateConfig: (partialConfig) => set((state) => ({
+        config: { ...state.config, ...partialConfig }
+      }))
+    }),
+    {
+      name: 'app-storage', // Nombre para localStorage/AsyncStorage
+      storage: createJSONStorage(() => AsyncStorage), // Usa AsyncStorage
+      partialize: (state) => ({ config: state.config }), // Solo persiste la configuración
+    }
+  )
+);
+
+
+
+
+
 
 //////////////////// LOGS ////////////////////
 interface LogEntry {
@@ -35,7 +66,7 @@ interface LogStore {
   addLog: (log: LogEntry) => void;
 }
 
-export const useLogStore = create<LogStore>((set) => ({
+const useLogStore = create<LogStore>((set) => ({
   logs: [],
   addLog: (log) =>
     set((state) => ({
@@ -45,5 +76,10 @@ export const useLogStore = create<LogStore>((set) => ({
 //////////////////// LOGS ////////////////////
 
 
+
+export {
+  useLogStore,
+  useStore
+}
 
 export default useStore;
