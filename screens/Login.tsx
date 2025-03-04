@@ -184,6 +184,9 @@ const LoginScreen = () => {
                 iconName="business"
                 iconPosition="right"
                 keyboardType='numeric'
+                value={idEmpresa}
+                onChangeText={setIdEmpresa}
+                // editable={!loading}
                 // error={errorMessage}
               />
             </View>
