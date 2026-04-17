@@ -2,9 +2,19 @@
 # see: https://developers.google.com/idx/guides/customize-idx-env
 { pkgs, ... }: {
   # Which nixpkgs channel to use.
-  channel = "stable-23.11"; # or "unstable"
+  channel = "stable-24.11";
   # Use https://search.nixos.org/packages to find packages
-  packages = [ pkgs.nodejs_20 ];
+  packages = [ 
+    pkgs.nodejs_22  # Cambiado de 20 a 22
+    pkgs.jdk17
+    pkgs.android-tools
+    pkgs.corepack_22 # Útil para manejar pnpm/yarn si los usas
+  ];
+
+  env = {
+    # Define la ruta de Java para que Gradle la encuentre
+    JAVA_HOME = "${pkgs.jdk17.home}";
+  };
   # Sets environment variables in the workspace
   # env = { EXPO_USE_FAST_RESOLVER = 1; };
   idx = {
@@ -24,7 +34,7 @@
           adb -s localhost:5554 wait-for-device 
         '';
         android = ''
-          npm run android -- --port 5554 --tunnel
+          npx expo start --android --tunnel
         '';
       };
     };
@@ -32,14 +42,8 @@
     previews = {
       enable = true;
       previews = {
-        web = {
-          command = [ "npm" "run" "web" "--" "--port" "$PORT" ];
-          manager = "web";
-        };
         android = {
-          # noop
-          command = [ "tail" "-f" "/dev/null" ];
-          manager = "web";
+          manager = "android";
         };
       };
     };
