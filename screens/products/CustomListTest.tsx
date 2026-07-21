@@ -1,408 +1,246 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   FlatList,
   StyleSheet,
   TouchableOpacity,
   Animated,
   Dimensions,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
-// import { Marquee } from '@animatereactnative/marquee';
-import Toast from 'react-native-toast-message';
 
-import { Product , ProductOverlayProps } from '@/interfaces';
+import { Product, ProductOverlayProps } from '@/interfaces';
 import Carousel from '@/components/Carousel';
+import { useTheme } from '@/theme/ThemeProvider';
+import type { Theme } from '@/theme/theme';
 
+const DEFAULT_IMAGE = 'https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg';
 
+function buildCarouselImages(item: Product) {
+  if (!item?.images || item.images.length === 0) {
+    return [{ id: item.id ?? 'new', uri: DEFAULT_IMAGE }];
+  }
+  return item.images.map((value, index) => ({
+    id: value.id ?? `new-${index}`,
+    uri: value.image_url ?? `data:image/jpeg;base64,${value.image}`,
+  }));
+}
 
+const AnimatedText = ({ text, color }: { text: string; color: string }) => {
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const CHARACTER_WIDTH = 8;
+  const TEXT_WIDTH = text.length * CHARACTER_WIDTH;
+  const SCREEN_WIDTH = Dimensions.get('window').width;
+  const needsScroll = TEXT_WIDTH >= SCREEN_WIDTH;
 
+  useEffect(() => {
+    if (!needsScroll) return;
+
+    const duration = (TEXT_WIDTH + SCREEN_WIDTH) * 40;
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scrollX, { toValue: -TEXT_WIDTH, duration, useNativeDriver: true }),
+        Animated.delay(1100),
+      ])
+    );
+    animation.start();
+
+    return () => animation.stop();
+  }, [needsScroll, scrollX, TEXT_WIDTH, SCREEN_WIDTH]);
+
+  if (!needsScroll) {
+    return (
+      <Text style={{ textAlign: 'center', maxHeight: 20, color }} numberOfLines={1}>
+        {text}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.textWrapper}>
+      <Animated.Text
+        style={[
+          styles.overlayText,
+          { color },
+          { transform: [{ translateX: scrollX }] },
+          { width: TEXT_WIDTH + SCREEN_WIDTH },
+        ]}
+        numberOfLines={1}
+        ellipsizeMode="clip"
+      >
+        {text}
+      </Animated.Text>
+    </View>
+  );
+};
+
+interface ItemProps {
+  item: Product;
+  theme: Theme;
+  onPress: (product: Product) => void;
+}
+
+const GridCard = React.memo(({ item, theme, onPress, itemWidth, cardHeight }: ItemProps & { itemWidth: number; cardHeight: number }) => {
+  return (
+    <View
+      style={[
+        styles.gridCard,
+        {
+          width: itemWidth,
+          height: cardHeight,
+          backgroundColor: theme.colors.card,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radius.md,
+          ...theme.shadow,
+        },
+      ]}
+    >
+      <View style={{ width: itemWidth, minHeight: cardHeight * 0.7, maxHeight: cardHeight * 0.7 }}>
+        <Carousel images={buildCarouselImages(item)} />
+      </View>
+
+      <TouchableOpacity onPress={() => onPress(item)}>
+        <View style={[styles.infoContainer, { width: itemWidth, backgroundColor: theme.colors.card }]}>
+          <View style={styles.descriptionContainer}>
+            <AnimatedText text={item.description} color={theme.colors.text} />
+          </View>
+          <View style={styles.priceContainer}>
+            <Text style={[styles.priceText, { color: theme.colors.success }]}>${item.sale_price.toFixed(2)}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
+const ListRow = React.memo(({ item, theme, onPress }: ItemProps) => {
+  return (
+    <TouchableOpacity
+      onPress={() => onPress(item)}
+      style={[
+        styles.listRow,
+        {
+          backgroundColor: theme.colors.card,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radius.md,
+        },
+      ]}
+    >
+      <View style={[styles.listImage, { borderRadius: theme.radius.sm }]}>
+        <Carousel images={buildCarouselImages(item)} />
+      </View>
+
+      <View style={styles.listInfo}>
+        <AnimatedText text={item.description} color={theme.colors.text} />
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 2 }}>{item.reference}</Text>
+        <Text style={[styles.priceText, { color: theme.colors.success, marginTop: 4 }]}>
+          ${item.sale_price.toFixed(2)}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 const ProductOverlay: React.FC<ProductOverlayProps> = ({
-  products     = [],
-  onPress      = ()=>{},
-  loading      = false, // 
-  numColumns   = 5, // Default to 2 columns
-  onEndReached = ()=>{},
+  products = [],
+  onPress = () => {},
+  loading = false,
+  numColumns = 2,
+  viewStyle = 'grid',
+  onEndReached = () => {},
 }) => {
-
-  const DEFAULT_IMAGE = 'https://t4.ftcdn.net/jpg/00/27/99/73/360_F_27997377_6iqcc9JW0g06VQUXXN7kYNFrB3TLYUhU.jpg';
+  const theme = useTheme();
   const screenWidth = Dimensions.get('window').width;
 
-  const [parentWidth, setParentWidth] = React.useState(0);
-  const [parentHeight, setParentHeight] = React.useState(0);
+  const renderItem = useCallback(
+    ({ item }: { item: Product }) => {
+      if (viewStyle === 'list') {
+        return <ListRow item={item} theme={theme} onPress={onPress} />;
+      }
 
-  const AnimatedText = ({ text }: { text: string }) => {
-    const scrollX = useRef(new Animated.Value(0)).current;
-    const CHARACTER_WIDTH = 8; // Ajusta según la fuente y tamaño
-    const TEXT_WIDTH = text.length * CHARACTER_WIDTH; // Ancho del texto calculado
-    const SCREEN_WIDTH = Dimensions.get('window').width;
+      const itemWidth = screenWidth / numColumns - 16;
+      const cardHeight = itemWidth * 1.3;
+      return <GridCard item={item} theme={theme} onPress={onPress} itemWidth={itemWidth} cardHeight={cardHeight} />;
+    },
+    [viewStyle, theme, onPress, numColumns, screenWidth]
+  );
 
-    if (text.length * CHARACTER_WIDTH < SCREEN_WIDTH) {
-      
-      return <Text style={[ { textAlign:'center', maxHeight:20 }]}>{text}</Text>;
-    }
-
-    useEffect(() => {
-      const duration = (TEXT_WIDTH + SCREEN_WIDTH) * 40; // Calcula duración relativa (ajustable para velocidad)
-  
-      // Inicia la animación en bucle con velocidad constante
-      const startAnimation = () => {
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(scrollX, {
-              toValue: -TEXT_WIDTH, // Mueve el texto completamente hacia fuera de la pantalla
-              duration: duration, // Duración basada en el texto
-              useNativeDriver: true,
-            }),
-            Animated.delay(1100), // Pausa antes de reiniciar
-          ])
-        ).start();
-      };
-  
-      startAnimation();
-    }, [scrollX, TEXT_WIDTH]);
-
-    return (
-      <View style={styles.textWrapper}>
-        <Animated.Text
-          style={[
-            styles.overlayText,
-            {
-              transform: [
-                {
-                  translateX: scrollX, // Controla el desplazamiento
-                },
-              ],
-            },
-            { width: TEXT_WIDTH + SCREEN_WIDTH }, // Ancho para permitir reaparecer
-          ]}
-          numberOfLines={1}
-          ellipsizeMode="clip"
-        >
-          {text}
-        </Animated.Text>
-      </View>
-    );
-  };
-
-  const renderItem1 = ({ item }: { item: Product }) => {
-    const itemWidth = screenWidth / numColumns - 20; // Adjust width based on columns
-    const cardHeight = itemWidth * 1.2; // Define a consistent height-to-width ratio
-
-    return(
-      <View
-        style={{
-          // Tu card
-          borderWidth: 0.25,
-          borderColor: "gray",
-          borderRadius: 8,
-          margin: 2,
-          width: itemWidth + 10,   // <--- ancho fijo
-          height: cardHeight + 20,
-          backgroundColor: "#fff" ,
-          // backgroundColor: "red" ,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-        }}
-      >
-        <TouchableOpacity
-          onLongPress={()=>{
-            Toast.show({
-              type: 'info',
-              text1: 'Warning',
-              text2: 'HOLA'
-            })
-          }}
-        >
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            // El ScrollView también debe usar el MISMO ancho que el contenedor
-            style={{
-              width: itemWidth + 10,             // <--- ANCHO IGUAL que el padre
-              minHeight: cardHeight * 0.7,
-              maxHeight: cardHeight * 0.7,
-            }}
-            contentContainerStyle={{
-              // lo que necesites
-            }}
-          >
-            {/* DEFAULT IMAGE */}
-            {(!item?.images || item.images.length === 0) && (
-              <View
-                key={0}
-                style={{
-                  width: itemWidth + 10,         // <--- MISMO ancho
-                  height: '100%',
-                }}
-              >
-                <Image
-                  source={{ uri: DEFAULT_IMAGE }}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    resizeMode: 'contain',
-                  }}
-                />
-              </View>
-            )}
-
-            {/* DEMÁS IMÁGENES */}
-            {item?.images?.map((value, index) => (
-              <View
-                key={index}
-                style={{
-                  width: itemWidth + 10,         // <--- MISMO ancho
-                  height: '100%',
-                }}
-              >
-                <Image
-                  source={
-                    value.image_url
-                      ? { uri: value.image_url }
-                      : { uri: `data:image/jpeg;base64,${value.image}` }
-                  }
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    resizeMode: 'contain',
-                    borderRadius: 8,
-                  }}
-                />
-              </View>
-            ))}
-          </ScrollView>
-        </TouchableOpacity>
-
-         {/* Contenedor de información */}
-        <TouchableOpacity
-          onPress={() => onPress && onPress(item)}
-        >
-          <View style={[
-            styles.infoContainer
-          ]}>
-            <View style={[
-              styles.descriptionContainer
-            ]}>
-              <AnimatedText text={item.description} />
-            </View>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    )
-  };
-
-  const renderItem = ({ item }: { item: Product }) => {
-    const itemWidth = screenWidth / numColumns - 20; // Adjust width based on columns
-    const cardHeight = itemWidth * 1.2; // Define a consistent height-to-width ratio
-
-    return(
-      <View
-        onLayout={(event) => {
-          const { width, height } = event.nativeEvent.layout;
-          setParentWidth(width);
-          setParentHeight(height);
-        }}
-        style={{
-          // Tu card
-          borderWidth: 0.25,
-          borderColor: "gray",
-          borderRadius: 8,
-          margin: 2,
-          width: itemWidth + 10,   // <--- ancho fijo
-          height: cardHeight + 20,
-          backgroundColor: "#fff" ,
-          // backgroundColor: "red" ,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-        }}
-      >
-
-        <View
-          style={{
-            width: itemWidth + 10,             // <--- ANCHO IGUAL que el padre
-            minHeight: cardHeight * 0.7,
-            maxHeight: cardHeight * 0.7,
-          }}
-        >
-          <Carousel
-            // text={['HOLA', 'mundo',  'Hello', 'texto de ejemplo', 'otro texto']}
-            images={
-              (!item?.images || item.images.length === 0) ?
-              [
-                {
-                  "id"  : item.id??'new',
-                  "uri" : DEFAULT_IMAGE
-                }
-              ]
-              :
-              item?.images?.map((value, index) => ({
-                "id"  : value.id ?? `new-${index}`,
-                "uri" : value.image_url ?? `data:image/jpeg;base64,${value.image}`
-              }))
-          }
-          />
-        </View>
-
-         {/* Contenedor de información */}
-        <TouchableOpacity
-          onPress={() => onPress && onPress(item)}
-        >
-          <View style={[
-            styles.infoContainer,
-            {
-              width:parentWidth *0.9
-            }
-          ]}>
-            <View style={[
-              styles.descriptionContainer
-            ]}>
-              <AnimatedText text={item.description} />
-            </View>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>${item.sale_price.toFixed(2)}</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    )
-  };
-
-
+  const keyExtractor = useCallback(
+    (item: Product) => (item?.id ? item.id.toString() : item.reference.toString()),
+    []
+  );
 
   return (
     <FlatList
+      key={viewStyle}
       data={products}
       renderItem={renderItem}
-      keyExtractor={(item) => item?.id ? item.id.toString() : item.reference.toString()}
-      numColumns={numColumns}
+      keyExtractor={keyExtractor}
+      numColumns={viewStyle === 'list' ? 1 : numColumns}
       contentContainerStyle={styles.list}
-      onEndReached={onEndReached} // Llama a tu función para cargar más productos
-      onEndReachedThreshold={1} // Carga más cuando el scroll llega al 50% del final
-      // ListFooterComponent={loading && <ActivityIndicator size="small" />}
-      ListFooterComponent={
-        <>
-          { loading && (
-            <ActivityIndicator size={"large"} color="#0000ff" />
-          )}
-        </>
-      }
+      onEndReached={onEndReached}
+      onEndReachedThreshold={1}
+      initialNumToRender={8}
+      maxToRenderPerBatch={8}
+      windowSize={7}
+      removeClippedSubviews
+      ListFooterComponent={loading ? <ActivityIndicator size="large" color={theme.colors.primary} style={{ margin: 16 }} /> : null}
     />
   );
-
 };
-
-
 
 const styles = StyleSheet.create({
   list: {
-    // flex: 1, // Ocupa todo el espacio disponible
-    justifyContent: 'flex-start', // Asegura que el contenido comience desde la parte superior
-    alignItems: 'center', // Alinea horizontalmente en el centro
-    paddingHorizontal: 0, // Sin espacio extra en los lados
-    marginHorizontal: 0, // Sin márgenes adicionales
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 4,
   },
-  card: {
-    margin: 5,
-    borderRadius: 8,
+  gridCard: {
+    borderWidth: StyleSheet.hairlineWidth,
+    margin: 6,
     overflow: 'hidden',
-    backgroundColor: '#fff',
-    elevation: 2,
-    paddingBottom:5,
-    paddingLeft:5,
-    paddingRight:5
   },
-  cardImage: {
-    // width: '100%',
-    // resizeMode: 'cover',
-  },
-
   infoContainer: {
-    width: "100%",
-    // borderTopWidth: 0.25,
-    // borderColor: "#c1c1c1",
-    position: "relative",
-    shadowColor: "#4e4d4d",
-    backgroundColor: "#fff",
-    borderBottomLeftRadius:  5,
-    borderBottomRightRadius: 5,
-    // shadowOffset: { width: 0, height: 1 }, // Sombra debajo del borde
-    // shadowOpacity: 0.3,
-    // shadowRadius: 2,
-    // elevation: 2, // Para sombra en Android
+    position: 'relative',
+    paddingVertical: 6,
   },
   descriptionContainer: {
-    paddingLeft:2,
-    paddingRight:2,
+    paddingHorizontal: 4,
   },
   priceContainer: {
     alignItems: 'flex-end',
-    paddingRight: 2,
+    paddingRight: 6,
   },
   priceText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "green",
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 8,
+    marginVertical: 4,
+    marginHorizontal: 8,
+    width: Dimensions.get('window').width - 16,
+  },
+  listImage: {
+    width: 84,
+    height: 84,
+    overflow: 'hidden',
+  },
+  listInfo: {
+    flex: 1,
+    marginLeft: 12,
   },
   textWrapper: {
     overflow: 'hidden',
     width: '100%',
   },
   overlayText: {
-    color: 'black',
     fontSize: 16,
   },
-
-
-
-
-  productImagePreviewList: {
-    flexDirection: "row",
-    alignItems: "center", // Centrar las imágenes
-    paddingVertical: 5, // Opcional: Espaciado vertical
-  },
-  productImagePreviewImage: {
-    width: 80,
-    height: 80,
-    margin: 5,
-    borderRadius: 5,
-  },
-  productImageContainer: {
-    position: 'relative',
-  },
-  productImageDeleteButton: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    // backgroundColor: 'rgba(220, 20, 0, 0.5)',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  productImageDeleteButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-
 });
-
 
 export default ProductOverlay;

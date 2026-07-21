@@ -61,6 +61,7 @@ export interface DropdownProps {
   onSelect?: (option: Options) => void;
   style?: ViewStyle;
   iconMode?: boolean;
+  iconName?: MaterialIconsName; // Ícono a la izquierda del label (cuando iconMode=false)
   label?: string;
   extraButton?: {
     title?: string;
@@ -82,7 +83,8 @@ export interface CameraComponentProps {
 export interface ProductOverlayProps {
   products: Product[];
   numColumns?: number; // Number of columns in the grid
+  viewStyle?: 'grid' | 'list';
   onPress?: (product: Product) => void;
-  onEndReached?: () => void; // When the list is coming to end, while user scrolling 
+  onEndReached?: () => void; // When the list is coming to end, while user scrolling
   loading?:boolean; // for show loading component when loading
 }

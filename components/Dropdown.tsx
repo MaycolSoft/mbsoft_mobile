@@ -1,27 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ViewStyle, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Modal, StyleSheet, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Portal } from 'react-native-paper';
 import Button from '@/components/Button';
 import { DropdownProps, Options } from '@/interfaces';
+import { useTheme } from '@/theme/ThemeProvider';
 
-
-const Dropdown: React.FC<DropdownProps> = ({ 
+const Dropdown: React.FC<DropdownProps> = ({
   label = "",
   options,
   value,
   onSelect = () => {},
   style = {},
-  iconMode = false ,
-  extraButton = null
+  iconMode = false,
+  iconName,
+  extraButton = null,
 }) => {
+  const theme = useTheme();
   const [visible, setVisible] = useState<boolean>(false);
   const [selectedOption, setSelectedOption] = useState<Options | null>(null);
   const dropdownRef = useRef<View>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number }>({
+    top: 0,
+    left: 0,
+    width: 200,
+  });
 
-
-  
   const handleSelect = (option: Options) => {
     setSelectedOption(option);
     onSelect(option);
@@ -32,82 +35,104 @@ const Dropdown: React.FC<DropdownProps> = ({
     if (dropdownRef.current) {
       dropdownRef.current.measure((fx, fy, width, height, px, py) => {
         const screenWidth = Dimensions.get('window').width;
-        const dropdownWidth = 200; // Ancho del dropdown
+        const dropdownWidth = Math.max(width, 200);
         const isTooFarRight = px + dropdownWidth > screenWidth;
 
-        // Calcula la posición horizontal y vertical del dropdown
         setDropdownPosition({
-          top: py + height, // Aparece justo debajo del botón
-          left: isTooFarRight ? screenWidth - dropdownWidth - 10 : px, // Ajusta a la izquierda si se sale del borde derecho
+          top: py + height,
+          left: isTooFarRight ? screenWidth - dropdownWidth - 10 : px,
+          width: dropdownWidth,
         });
-        
-        setVisible(!visible);
+
+        setVisible(true);
       });
     }
   };
 
-
-  useEffect(()=>{
-    if(value && options.length > 0){      
-      const selectedOption = options.find(option => option.value === value);
-      setSelectedOption(selectedOption || null);
+  useEffect(() => {
+    if (value && options.length > 0) {
+      const found = options.find((option) => option.value === value);
+      setSelectedOption(found || null);
     }
   }, [value, options]);
 
   return (
     <View style={[styles.main, style]} ref={dropdownRef}>
-      <View style={[styles.dropdownContainer]}>
-
-        {/* <TouchableOpacity onPress={toggleDropdown} style={iconMode ? styles.iconButton : styles.selectButton}> */}
-        <TouchableOpacity onPress={toggleDropdown} style={[iconMode ? styles.iconButton : styles.selectButton, { flex: 1 }]} >
+      <View style={styles.dropdownContainer}>
+        <TouchableOpacity
+          onPress={toggleDropdown}
+          style={[
+            iconMode ? styles.iconButton : styles.selectButton,
+            {
+              flex: 1,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radius.md,
+              backgroundColor: theme.colors.card,
+            },
+          ]}
+        >
           {iconMode ? (
-            <MaterialIcons name="filter-list" size={24} color="black" />
+            <MaterialIcons name="filter-list" size={24} color={theme.colors.text} />
           ) : (
-            <Text>{selectedOption?.label || (label || 'Selecciona una opción')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {iconName && (
+                <MaterialIcons name={iconName} size={18} color={theme.colors.textMuted} style={{ marginRight: 8 }} />
+              )}
+              <Text style={{ color: theme.colors.text }}>{selectedOption?.label || (label || 'Selecciona una opción')}</Text>
+            </View>
           )}
         </TouchableOpacity>
 
-        {/* Botón adicional opcional */}
         {extraButton && (
           <Button
             icon={extraButton.icon}
             onPress={extraButton.onPress}
             variant={extraButton.variant || 'primary'}
             size={extraButton.size || 'x-small'}
-            style={{...styles.extraButton, ...extraButton.style}}
+            style={{ ...styles.extraButton, ...extraButton.style }}
           />
         )}
       </View>
-      {visible && (
-       <Portal>
-          <View style={[
-            styles.dropdown, { 
-              top: dropdownPosition.top, 
-              left: dropdownPosition.left 
-            }
-          ]}>
-            {options.map((option, index) => (
-              <TouchableOpacity key={index} onPress={() => handleSelect(option)} style={styles.option}>
-                <Text>{option.label}</Text>
-              </TouchableOpacity>
-            ))}
+
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setVisible(false)}>
+          <View style={StyleSheet.absoluteFill}>
+            <View
+              style={[
+                styles.dropdown,
+                {
+                  top: dropdownPosition.top,
+                  left: dropdownPosition.left,
+                  width: dropdownPosition.width,
+                  backgroundColor: theme.colors.card,
+                  borderRadius: theme.radius.md,
+                  ...theme.shadow,
+                },
+              ]}
+            >
+              {options.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleSelect(option)}
+                  style={[styles.option, { borderBottomColor: theme.colors.border }]}
+                >
+                  <Text style={{ color: theme.colors.text }}>{option.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </Portal>
-      )}
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  main: {
-    // flex: 1,
-  },
+  main: {},
   selectButton: {
     padding: 10,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    width:"100%"
+    width: '100%',
   },
   iconButton: {
     padding: 2,
@@ -115,27 +140,18 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: 'absolute',
-    backgroundColor: '#eaeaea',
-    borderRadius: 5,
-    width: 200,
-    zIndex: 1000, // Asegura que esté encima de otros elementos
-    elevation: 10, // Sombra en Android
-    shadowColor: '#000', // Sombra negra para iOS
-    shadowOffset: { width: 0, height: 4 }, // Desplazamiento de la sombra
-    shadowOpacity: 0.3, // Opacidad de la sombra
-    shadowRadius: 4, // Difuminado de la sombra
+    overflow: 'hidden',
   },
   option: {
     padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   dropdownContainer: {
-    flexDirection: 'row', // Alinear elementos horizontalmente
-    alignItems: 'stretch', // Ambos elementos se estirarán para igualar la altura
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
   extraButton: {
-    marginLeft: 0, // Espaciado entre el dropdown y el botón
+    marginLeft: 0,
     padding: 2,
     justifyContent: 'center',
     alignItems: 'center',

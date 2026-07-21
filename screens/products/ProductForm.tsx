@@ -2,29 +2,37 @@ import React, { useState, useEffect } from 'react';
 import * as FileSystem from 'expo-file-system';
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Provider, Portal, ActivityIndicator } from 'react-native-paper';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Linking} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Linking } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { postRequest, getRequest, deleteRequest, isAxiosError } from '@/api/apiService';
 import { showAlert } from '@/components/AppAlert';
-
+import { useTheme } from '@/theme/ThemeProvider';
 
 import CustomException from '@/Utils/CustomException';
 import Dropdown       from '@/components/Dropdown';
 import Button         from '@/components/Button';
 import Camera         from '@/components/Camera';
-import TextInputField from '@/components/InputField';
+import TextInput      from '@/components/TextInput';
+import SwitchRow      from '@/components/SwitchRow';
 import { Product, ProductFormInterface, CategoriaUnidadesTax } from '@/interfaces';
 
 
 interface ImageManagementInterface {
-  // image_url?: string; // Opcional si puede estar ausente
-  [key: string]: any; // Permitir propiedades adicionales
+  [key: string]: any;
 }
 
-
+const SectionTitle = ({ icon, children }: { icon: keyof typeof MaterialIcons.glyphMap; children: string }) => {
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: theme.spacing.lg, marginBottom: theme.spacing.md }}>
+      <MaterialIcons name={icon} size={18} color={theme.colors.primary} style={{ marginRight: 8 }} />
+      <Text style={{ color: theme.colors.text, fontSize: theme.typography.fontSize.md, fontWeight: '700' }}>{children}</Text>
+    </View>
+  );
+};
 
 const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInterface) => {
+  const theme = useTheme();
   const [formData, setFormData] = useState<Product>({
     "id"          : undefined,
     "reference"   : '',
@@ -37,7 +45,6 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
     "tax_include" : false,
     "status"      : false,
   });
-  const [gettingCategoriaUnidadesTax, setGettingCategoriaUnidadesTax] = useState(false);
   const [categoriaUnidadesTax, setCategoriaUnidadesTax] = useState<CategoriaUnidadesTax>({
     categoria: [],
     tax: [],
@@ -48,7 +55,6 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [imageManagment, setImageManagment] = useState<ImageManagementInterface[]>([]);
   const [imageManagmentRemoved, setImageManagmentRemoved] = useState<ImageManagementInterface[]>([]);
-
 
   const [modalPreviewImageVisible, setModalPreviewImageVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -69,30 +75,25 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
 
   const validateForm = () => {
     const newErrors: any = {};
-  
-    // Validar referencia
+
     if (!formData.reference) newErrors.reference = 'La referencia es obligatoria.';
-  
-    // Validar descripción
     if (!formData.description) newErrors.description = 'La descripción es obligatoria.';
-  
-    // Validar costo_price
+
     if (!formData.costo_price) {
       newErrors.costo_price = 'El costo es obligatorio.';
     } else if (isNaN(Number(formData.costo_price)) || Number(formData.costo_price) <= 0) {
       newErrors.costo_price = 'El costo debe ser un número positivo.';
     }
-  
-    // Validar sale_price
+
     if (!formData.sale_price) {
       newErrors.sale_price = 'El precio es obligatorio.';
     } else if (isNaN(Number(formData.sale_price)) || Number(formData.sale_price) <= 0) {
       newErrors.sale_price = 'El precio debe ser un número positivo.';
     }
-  
+
     return newErrors;
   };
-  
+
   const handleSubmit = async () => {
 
     setErrors({});
@@ -118,7 +119,6 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
         "tax_include": `${formData.tax_include}`,
         "status"     : `${formData.status}`,
       }
-
 
       await postRequest('api/productos/updateOrCreateProduct', productForm);
       await handleSendImages();
@@ -161,25 +161,22 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
       return
     }
 
-
     const formData = new FormData();
 
     for (const [index, image] of imageManagment.entries()) {
       try {
-        // Convertir URI local a Base64
         const base64Data = await FileSystem.readAsStringAsync(image.image_url, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: (FileSystem as any).EncodingType.Base64,
         });
-  
-        const fileName = image.image_url.split('/').pop(); // Nombre del archivo
-        const fileType = fileName?.split('.').pop() || 'jpeg'; // Tipo MIME
-  
-        // Agregar archivo al FormData
+
+        const fileName = image.image_url.split('/').pop();
+        const fileType = fileName?.split('.').pop() || 'jpeg';
+
         formData.append(`file[${index}]`, {
           uri: `data:image/${fileType};base64,${base64Data}`,
           name: fileName,
           type: `image/${fileType}`,
-        });
+        } as any);
       } catch (error) {
         console.error(`Error al procesar la imagen ${index}:`, error);
       }
@@ -197,7 +194,7 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
         text1: 'Éxito',
         text2: 'Imágenes enviadas correctamente.',
       });
-    } catch (error) {    
+    } catch (error: any) {
       throw new CustomException({ code: "04", message: 'Imagenes: ' + error.message });
     }
   };
@@ -239,10 +236,7 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
   const getCategoriaUnidadesTax = async () => {
     try {
       const response = await getRequest('api/pos/getCategoriaUnidadesTax', {})
-
-      const listCategoriaUnidadesTax = response.data?.data;
-
-      setCategoriaUnidadesTax(listCategoriaUnidadesTax);
+      setCategoriaUnidadesTax(response.data?.data);
     } catch (error) {
       if (isAxiosError(error)) {
         Toast.show({
@@ -257,19 +251,14 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
           text2: 'Ha ocurrido un error al cargar los productos',
         });
       }
-    } finally {
-      setGettingCategoriaUnidadesTax(false);
     }
   }
 
   const fillFieldUpdateProductMode = () => {
-
     if(!product) return;
 
     try {
-
       setFormData(product);
-
     } catch (error) {
       Toast.show({
         type: 'error',
@@ -277,10 +266,7 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
         text2: 'Ocurrio un problema al tratar de llenar el formulario para editar el producto',
       });
     }
-
   }
-
-
 
   useEffect(()=>{
     getCategoriaUnidadesTax();
@@ -289,519 +275,327 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
 
   const [scrollViewKey, setScrollViewKey] = useState(0);
 
+  const pickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status === 'denied') {
+        showAlert(
+          'Permisos denegados',
+          'Has denegado los permisos para acceder a la galería. Ve a la configuración de la app para habilitarlos.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Abrir configuración', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+
+      if (status !== 'granted') {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Necesitamos acceso a tu galería para seleccionar imágenes.',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 1,
+        allowsMultipleSelection: true,
+        selectionLimit: 5,
+      });
+
+      if (!result.canceled) {
+        setImageManagment((prev) => {
+          const newImageManagment = [...prev, ...result.assets.map((asset) => ({ image_url: asset.uri }))];
+          setScrollViewKey((prevKey) => prevKey + 1);
+          return newImageManagment;
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Error al abrir la galería.',
+      });
+    }
+  };
+
+  const toggleRemoveExistingImage = (index: number, value: any) => {
+    setImageManagmentRemoved((prev) => [...prev, { id: value.id }]);
+
+    if (product?.images) {
+      if (product.images[index].deleted_at) {
+        product.images[index].deleted_at = null;
+        const indexToRemove = imageManagmentRemoved.findIndex((item) => item.id == value.id);
+        if (indexToRemove !== -1) {
+          setImageManagmentRemoved((prev) => prev.filter((_, i) => i !== indexToRemove));
+        }
+      } else {
+        product.images[index].deleted_at = new Date().toISOString();
+      }
+    }
+  };
 
   return (
-    <Provider>
-      <SafeAreaView style={styles.safeContainer}>
-        {/* LOADING LAYER */}
-        {loading && (
-          <View
-            style={{
-              position: 'absolute',   // Coloca este View encima de todo
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,              // Ocupa toda la pantalla
-              justifyContent: 'center', // Centra verticalmente
-              alignItems: 'center',     // Centra horizontalmente
-              backgroundColor: 'rgba(0, 0, 0, 0.4)', // Fondo semitransparente opcional
-              zIndex: 1000,            // Asegura que esté por encima de otros componentes
-              borderRadius:10
-            }}
-          >
-            <ActivityIndicator animating={loading} color="blue" size="large" />
-          </View>
-          )}
-        <View style={styles.container}>
-          <Text style={styles.headerTitle}>{product ? 'Editar Producto' : 'Crear Producto'}</Text>
+    <View>
+      {/* Información General */}
+      <SectionTitle icon="inventory-2">Información General</SectionTitle>
+      <TextInput
+        label="Referencia"
+        iconName="label"
+        value={formData.reference}
+        placeholder="Referencia"
+        onChangeText={(value) => handleChange('reference', value)}
+        error={errors.reference}
+      />
 
-          <ScrollView 
-            contentContainerStyle={styles.formContainer}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Información General */}
-            <Text style={styles.sectionTitle}>Información General</Text>
-            <TextInputField
-              label="Referencia"
-              value={formData.reference}
-              placeholder="Referencia"
-              onChangeText={(value) => handleChange('reference', value)}
-              error={errors.reference}
-            />
+      <TextInput
+        label="Descripción"
+        iconName="description"
+        value={formData.description}
+        placeholder="Descripción"
+        onChangeText={(value) => handleChange('description', value)}
+        error={errors.description}
+      />
 
-            <TextInputField
-              label="Descripción"
-              value={formData.description}
-              placeholder="Descripción"
-              onChangeText={(value) => handleChange('description', value)}
-              error={errors.description}
-            />
-
-            {/* Precios */}
-            <Text style={styles.sectionTitle}>Precios</Text>
-            <TextInputField
-              label="Costo"
-              value={formData.costo_price}
-              placeholder="Costo"
-              keyboardType="numeric"
-              error={errors.costo_price}
-              onChangeText={(value) => handleChange('costo_price', value)}
-            />
-            <TextInputField
-              label="Precio"
-              value={formData.sale_price}
-              placeholder="Precio"
-              keyboardType="numeric"
-              error={errors.sale_price}
-              onChangeText={(value) => handleChange('sale_price', value)}
-            />
-
-
-            <View style={styles.dropdownGrid}>
-              {/* CATEGORIA */}
-              <View style={styles.dropdownContainer}>
-                <Dropdown
-                  label="Categoría"
-                  onSelect={(item) => handleChange('categoria', item.value)}
-                  options={categoriaUnidadesTax.categoria.map(item => ({
-                    label: item?.description,
-                    value: item?.id,
-                  }))}
-                  extraButton={{
-                    icon: 'settings',
-                    onPress: () => console.log('Abrir configuración'),
-                    variant: 'dark'
-                  }}
-                  value={formData.id_categoria}
-                />
-              </View>
-              {/* UNIDAD */}
-              <View style={styles.dropdownContainer}>
-                <Dropdown
-                  label="Unidad"
-                  onSelect={(item) => handleChange('unidad', item.value)}
-                  options={
-                    categoriaUnidadesTax.unidad.map(item => ({
-                      label: item?.description,
-                      value: item?.id,
-                    }))
-                  }
-                  extraButton={{
-                    icon: 'settings',
-                    onPress: () => console.log('Abrir configuración'),
-                    variant: 'dark'
-                  }}
-                  value={formData.id_unidad}
-                />
-              </View>
-              {/* ITEBIS */}
-              <View style={styles.dropdownContainer}>
-                <Dropdown
-                  label="ITBIS"
-                  onSelect={(item) => handleChange('tax', item.value)}
-                  options={
-                    categoriaUnidadesTax.tax.map(item => ({
-                      label: item?.description,
-                      value: item?.id,
-                    }))
-                  }
-                  extraButton={{
-                    icon: 'settings',
-                    onPress: () => console.log('Abrir configuración'),
-                    variant: 'dark'
-                  }}
-                  value={formData.id_tax}
-                />
-              </View>
-
-            </View>
-
-            <View style={styles.dropdownGrid}>
-              <View style={styles.dropdownContainer}>
-                  <Text style={styles.sectionTitle}>Impuesto Incluido</Text>
-                  <Dropdown
-                    label="Impuesto Incluido"
-                    onSelect={(item) => handleChange('tax_include', item.value === 'SI'?1:0)}
-                    options={[
-                      { label: 'SI', value: 'SI' },
-                      { label: 'NO', value: 'NO' },
-                    ]}
-                    value={formData.tax_include ? 'SI' : 'NO'}
-                  />
-              </View>
-
-              <View style={styles.dropdownContainer}>
-                <Text style={styles.sectionTitle}>Estado</Text>
-                <Dropdown
-                  label="Estado"
-                  onSelect={(item) => handleChange('status', item.value === 'ACTIVO')}
-                  options={[
-                    { label: 'ACTIVO', value: 'ACTIVO' },
-                    { label: 'INACTIVO', value: 'INACTIVO' },
-                  ]}
-                  value={formData.status ? 'ACTIVO' : 'INACTIVO'}
-                />
-              </View>
-            </View>
-
-            {product && (
-              <>
-                <View>
-                  {isCameraOpen ? (
-                  <Portal >
-                    <Camera
-                      onClose={() => setIsCameraOpen(false)}
-                      onDone={(images)=>{
-                        setImageManagment((prev) => [...prev, ...images.map((uri) => ({ image_url: uri }))]);
-                      }}
-                    />
-                  </Portal>
-                  ) : (
-                    <View
-                     style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      flexWrap: 'wrap', // Permite que los elementos bajen a una nueva línea si no caben
-                      justifyContent: 'space-between', // Distribuye los botones
-                      paddingTop: 10,
-                      paddingBottom: 10,
-                      maxWidth: "100%", // Establece un ancho máximo para limitar el contenedor
-                     }}
-                    >
-                      <Button title="Abrir Camara" onPress={() => setIsCameraOpen(true)} />
-                      <Button
-                        title="Elegir Imagenes"
-                        variant='success'
-                        onPress={async () => {
-                          try {
-                            // Verificar y solicitar permisos
-                            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-                            if (status === 'denied') {
-                              showAlert(
-                                'Permisos denegados',
-                                'Has denegado los permisos para acceder a la galería. Ve a la configuración de la app para habilitarlos.',
-                                [
-                                  {
-                                    text: 'Cancelar',
-                                    style: 'cancel',
-                                  },
-                                  {
-                                    text: 'Abrir configuración',
-                                    onPress: () => Linking.openSettings(), // Abre la configuración de la app
-                                  },
-                                ]
-                              );
-                              return;
-                            }
-
-
-                            if (status !== 'granted') {
-                              Toast.show({
-                                type: 'error',
-                                text1: 'Error',
-                                text2: 'Necesitamos acceso a tu galería para seleccionar imágenes.',
-                              });
-                              return;
-                            }
-
-
-                            // Abrir la galería
-                            const result = await ImagePicker.launchImageLibraryAsync({
-                              mediaTypes: ["images"],
-                              allowsEditing: false,
-                              quality: 1, // Máxima calidad
-                              allowsMultipleSelection:true,
-                              selectionLimit: 5,
-                            });
-
-                            if (!result.canceled) {
-                              // Manejar las imágenes seleccionadas
-                              setImageManagment((prev) => {
-                                const newImageManagment = [...prev, ...result.assets.map((asset) => ({ image_url: asset.uri }))];
-                                setScrollViewKey((prevKey) => prevKey + 1); // Cambia la clave
-                                return newImageManagment;
-                              });
-                            } else {
-                              Toast.show({
-                                type: 'info',
-                                text1: 'Info',
-                                text2: 'Selección cancelada.',
-                              });
-                            }
-                          } catch (error) {
-                            Toast.show({
-                              type: 'error',
-                              text1: 'Error',
-                              text2: 'Error al abrir la galería.',
-                            });
-                          }
-                        }}
-                      />
-                    </View>
-                  )}
-                  {/* {uploading && <Text>Subiendo imágenes...</Text>} */}
-                </View>
-
-                <View> 
-                  <ScrollView
-                    key={scrollViewKey}
-                    style={styles.productImageScrollContainer}
-                    contentContainerStyle={styles.productImagePreviewList}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                  >
-                    <>
-                      {product?.images && product.images.map((value, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          onPress={() =>
-                            openImageModal(
-                              value.image_url
-                                ? value.image_url
-                                : `data:image/jpeg;base64,${value.image}`
-                            )
-                          }
-                        >
-                          <View key={index} style={[
-                            styles.productImageContainer,
-                            {
-                              backgroundColor: !product?.images? 'transparent' :product.images[index].deleted_at ? 'rgba(220, 20, 0, 0.4)' : 'transparent',
-                              borderRadius:10,
-                            }
-                          ]}>
-                            <Image
-                              source={
-                                value.image_url
-                                  ? { uri: value.image_url } // Imagen desde URL
-                                  : { uri: `data:image/jpeg;base64,${value.image}` } // Imagen en Base64
-                              }
-                              style={styles.productImagePreviewImage}
-                            />
-                            <TouchableOpacity
-                              style={styles.productImageDeleteButton}
-                              onPress={() => {
-
-                                setImageManagmentRemoved((prev) => [...prev, {"id": value.id}]);
-
-                                if(product.images)
-                                  if(product.images[index].deleted_at){
-                                    product.images[index].deleted_at = null;
-                                    
-                                    const indexToRemove = imageManagmentRemoved.findIndex((item) => item.id == value.id);
-
-                                    if (indexToRemove !== -1) {
-                                      setImageManagmentRemoved((prev) => prev.filter((_, index) => index !== indexToRemove));
-                                    }
-
-                                  }else{
-                                    product.images[index].deleted_at = new Date().toISOString();
-                                  }
-                              }}
-                            >
-                              <Text style={styles.productImageDeleteButtonText}>X</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-
-                      {imageManagment.map((value, index) => (
-                        <React.Fragment key={`imageManagment-${index}`}>
-                          <View style={[
-                            styles.productImageContainer,
-                            {
-                              borderRadius:10,
-                              backgroundColor: 'rgba(0, 255, 0, 0.4)',
-                              marginRight:1,
-                            }
-                          ]}>
-                            <Image
-                              source={{ uri: value?.image_url }}
-                              style={styles.productImagePreviewImage}
-                            />
-                            <TouchableOpacity
-                              style={styles.productImageDeleteButton}
-                              onPress={() => {
-                                setImageManagment((prev) => prev.filter((_, i) => i !== index));
-                              }}
-                            >
-                              <Text style={styles.productImageDeleteButtonText}>X</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </React.Fragment>
-                      ))}
-                    </>
-                  </ScrollView>
-                </View>
-              </>
-            )}
-          </ScrollView>
-
-          <Portal>
-            <Modal
-              visible={modalPreviewImageVisible}
-              transparent={true}
-              animationType="fade"
-              onRequestClose={closeImageModal}
-            >
-
-              <View style={{ 
-                flex: 1,
-                backgroundColor: "rgba(0, 0, 0, 0.8)",
-                justifyContent: "center",
-                alignItems: "center",// styles.modalContainer
-              }}>
-
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 50,
-                    // right: 50,
-                    // paddingHorizontal: 20,
-                    // paddingVertical: 10,
-                    // backgroundColor: "red",
-                    // borderRadius: 5,
-                  }}
-                >
-                  <Text style={{ color: "white", fontWeight: "bold" }}>Preview</Text>
-                </View>
-
-
-                {selectedImage && (
-                  <Image
-                    source={{ uri: selectedImage }}
-                    style={{
-                      width: "90%",
-                      height: "70%",
-                      resizeMode: "contain",
-                    }}
-                  />
-                )}
-
-
-                <Button 
-                  // size="large"
-                  title="Cerrar"
-                  onPress={closeImageModal}
-                  variant='danger'
-                  icon='close'
-                  style={{
-                    width: "100%",
-                    margin: 10,
-                  }}
-                />
-
-              </View>
-              
-            </Modal>
-          </Portal>
-
-          {/* Botones */}
-          <View style={styles.footer}>
-            <Button title="Cancelar" onPress={onCancel} variant="danger" />
-            <Button title="Guardar" onPress={handleSubmit} variant="primary" />
-          </View>
+      {/* Precios */}
+      <SectionTitle icon="payments">Precios</SectionTitle>
+      <View style={styles.row}>
+        <View style={{ flex: 1 }}>
+          <TextInput
+            label="Costo"
+            iconName="paid"
+            value={`${formData.costo_price}`}
+            placeholder="0.00"
+            keyboardType="numeric"
+            error={errors.costo_price}
+            onChangeText={(value) => handleChange('costo_price', value)}
+          />
         </View>
-      </SafeAreaView>
-    </Provider>
+        <View style={{ flex: 1 }}>
+          <TextInput
+            label="Precio"
+            iconName="sell"
+            value={`${formData.sale_price}`}
+            placeholder="0.00"
+            keyboardType="numeric"
+            error={errors.sale_price}
+            onChangeText={(value) => handleChange('sale_price', value)}
+          />
+        </View>
+      </View>
+
+      {/* Clasificación */}
+      <SectionTitle icon="category">Clasificación</SectionTitle>
+      <View style={{ marginBottom: theme.spacing.md }}>
+        <Dropdown
+          label="Categoría"
+          iconName="category"
+          onSelect={(item) => handleChange('id_categoria', item.value)}
+          options={categoriaUnidadesTax.categoria.map(item => ({
+            label: item?.description,
+            value: item?.id,
+          }))}
+          value={formData.id_categoria}
+        />
+      </View>
+
+      <View style={{ marginBottom: theme.spacing.md }}>
+        <Dropdown
+          label="Unidad"
+          iconName="straighten"
+          onSelect={(item) => handleChange('id_unidad', item.value)}
+          options={categoriaUnidadesTax.unidad.map(item => ({
+            label: item?.description,
+            value: item?.id,
+          }))}
+          value={formData.id_unidad}
+        />
+      </View>
+
+      <View style={{ marginBottom: theme.spacing.lg }}>
+        <Dropdown
+          label="ITBIS"
+          iconName="percent"
+          onSelect={(item) => handleChange('id_tax', item.value)}
+          options={categoriaUnidadesTax.tax.map(item => ({
+            label: item?.description,
+            value: item?.id,
+          }))}
+          value={formData.id_tax}
+        />
+      </View>
+
+      <SwitchRow
+        label="Impuesto incluido en el precio"
+        iconName="receipt-long"
+        value={!!formData.tax_include}
+        onChange={(value) => handleChange('tax_include', value)}
+      />
+
+      <SwitchRow
+        label="Producto activo"
+        iconName="toggle-on"
+        value={!!formData.status}
+        onChange={(value) => handleChange('status', value)}
+      />
+
+      {product && (
+        <>
+          <SectionTitle icon="photo-camera">Imágenes</SectionTitle>
+
+          {isCameraOpen ? (
+            <Modal visible={isCameraOpen} animationType="slide" presentationStyle="fullScreen">
+              <Camera
+                onClose={() => setIsCameraOpen(false)}
+                onDone={(images)=>{
+                  setImageManagment((prev) => [...prev, ...images.map((uri) => ({ image_url: uri }))]);
+                }}
+              />
+            </Modal>
+          ) : (
+            <View style={styles.imageActionsRow}>
+              <Button title="Abrir cámara" icon="photo-camera" variant="light" onPress={() => setIsCameraOpen(true)} style={{ flex: 1 }} />
+              <Button title="Elegir imágenes" icon="photo-library" variant="light" onPress={pickFromGallery} style={{ flex: 1 }} />
+            </View>
+          )}
+
+          <ScrollView
+            key={scrollViewKey}
+            style={styles.productImageScrollContainer}
+            contentContainerStyle={styles.productImagePreviewList}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+          >
+            {product?.images && product.images.map((value, index) => {
+              const markedForDeletion = !!product.images?.[index]?.deleted_at;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => openImageModal(value.image_url ? value.image_url : `data:image/jpeg;base64,${value.image}`)}
+                >
+                  <View style={[styles.imageThumb, { borderRadius: theme.radius.md, borderColor: theme.colors.border }]}>
+                    <Image
+                      source={{ uri: value.image_url ? value.image_url : `data:image/jpeg;base64,${value.image}` }}
+                      style={[styles.productImagePreviewImage, { borderRadius: theme.radius.md }]}
+                    />
+                    {markedForDeletion && (
+                      <View style={[styles.deletedOverlay, { backgroundColor: `${theme.colors.danger}66`, borderRadius: theme.radius.md }]} />
+                    )}
+                    <TouchableOpacity
+                      style={[styles.imageActionButton, { backgroundColor: markedForDeletion ? theme.colors.success : theme.colors.danger }]}
+                      onPress={() => toggleRemoveExistingImage(index, value)}
+                    >
+                      <MaterialIcons name={markedForDeletion ? 'undo' : 'close'} size={14} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+
+            {imageManagment.map((value, index) => (
+              <View key={`imageManagment-${index}`} style={[styles.imageThumb, { borderRadius: theme.radius.md, borderColor: theme.colors.success }]}>
+                <Image source={{ uri: value?.image_url }} style={[styles.productImagePreviewImage, { borderRadius: theme.radius.md }]} />
+                <TouchableOpacity
+                  style={[styles.imageActionButton, { backgroundColor: theme.colors.danger }]}
+                  onPress={() => setImageManagment((prev) => prev.filter((_, i) => i !== index))}
+                >
+                  <MaterialIcons name="close" size={14} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        </>
+      )}
+
+      <Modal visible={modalPreviewImageVisible} transparent animationType="fade" onRequestClose={closeImageModal}>
+        <View style={styles.previewBackdrop}>
+          <TouchableOpacity style={styles.previewClose} onPress={closeImageModal} hitSlop={12}>
+            <MaterialIcons name="close" size={26} color="#fff" />
+          </TouchableOpacity>
+
+          {selectedImage && (
+            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+          )}
+        </View>
+      </Modal>
+
+      {/* Botones */}
+      <View style={styles.footer}>
+        <Button title="Cancelar" onPress={onCancel} variant="danger" disabled={loading} style={{ flex: 1 }} />
+        <Button title="Guardar" onPress={handleSubmit} variant="primary" loading={loading} style={{ flex: 1 }} />
+      </View>
+    </View>
   );
 };
 
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  formContainer: {
-    paddingBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginVertical: 10,
+  row: {
+    flexDirection: 'row',
+    gap: 12,
   },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
+    gap: 12,
+    marginTop: 20,
   },
-  saveButton: {
-    backgroundColor: 'green',
-    padding: 12,
-    borderRadius: 5,
-    flex: 1,
-    marginHorizontal: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: 'red',
-    padding: 12,
-    borderRadius: 5,
-    flex: 1,
-    marginHorizontal: 8,
-    alignItems: 'center',
-  },
-  safeContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  dropdownGrid: {
+  imageActionsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
   },
-  dropdownContainer: {
-    width: '48%', // Dos columnas
-    marginBottom: 16, // Espacio vertical
-    marginHorizontal: '1%', // Espacio horizontal para evitar solapes
-  },
-
-
-
-  
-
   productImageScrollContainer: {
-    maxHeight: 100,
+    maxHeight: 110,
   },
   productImagePreviewList: {
     flexDirection: "row",
-    alignItems: "center", // Centrar las imágenes
-    paddingVertical: 5, // Opcional: Espaciado vertical
+    alignItems: "center",
+    paddingVertical: 5,
+    gap: 8,
   },
   productImagePreviewImage: {
-    width: 80,
-    height: 80,
-    margin: 5,
-    borderRadius: 5,
+    width: 84,
+    height: 84,
   },
-  productImageContainer: {
+  imageThumb: {
     position: 'relative',
+    borderWidth: 1,
   },
-  productImageDeleteButton: {
+  deletedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  imageActionButton: {
     position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: 'rgba(220, 20, 0, 0.5)',
+    top: 4,
+    right: 4,
     borderRadius: 12,
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  productImageDeleteButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
+  previewBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.92)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-
+  previewClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1,
+  },
+  previewImage: {
+    width: "90%",
+    height: "70%",
+    resizeMode: "contain",
+  },
 });
 
 
