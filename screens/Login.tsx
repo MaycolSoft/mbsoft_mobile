@@ -1,59 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Animated, View, Text, TouchableOpacity, StyleSheet, Keyboard, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
+import {
+  Image,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  ScrollView,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Toast from 'react-native-toast-message'; 
+import Toast from 'react-native-toast-message';
 import { postRequest, isAxiosError } from '@/api/apiService';
 import useStore from '@/store/useStore';
-import TextInputField from '@/components/InputField';
+import { useTheme } from '@/theme/ThemeProvider';
+import TextInput from '@/components/TextInput';
 import CheckBox from '@/components/CheckBox';
-
-
-import Input from '@/components/Input';
+import Button from '@/components/Button';
 
 const LoginScreen = () => {
-  const { config } = useStore();
+  const theme = useTheme();
   const [idEmpresa, setIdEmpresa] = useState('1000');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin');
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
-
-
-  const [showInput, setShowInput] = useState(false);
-  const [scaleValue] = useState(new Animated.Value(1));
-
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scaleValue, {
-        toValue: 1.2,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleValue, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start(() => setShowInput(!showInput));
-  };
-
-
+  const [showEmpresa, setShowEmpresa] = useState(false);
 
   const setAccessToken = useStore((state) => state.setAccessToken);
 
-  // Función para cargar las credenciales guardadas (si existen)
   useEffect(() => {
     const loadCredentials = async () => {
       try {
         const savedIdEmpresa = await AsyncStorage.getItem('idEmpresa');
         const savedUsername = await AsyncStorage.getItem('username');
         const savedPassword = await AsyncStorage.getItem('password');
-        
+
         if (savedIdEmpresa && savedUsername && savedPassword) {
           setIdEmpresa(savedIdEmpresa);
           setUsername(savedUsername);
           setPassword(savedPassword);
-          setRemember(true); // Activa el switch de "Remember Me" si hay credenciales guardadas
+          setRemember(true);
         }
       } catch (error) {
         console.error('Error loading saved credentials:', error);
@@ -63,7 +52,6 @@ const LoginScreen = () => {
     loadCredentials();
   }, []);
 
-  // Función para guardar credenciales en AsyncStorage
   const saveCredentials = async () => {
     if (remember) {
       try {
@@ -76,7 +64,6 @@ const LoginScreen = () => {
     }
   };
 
-  // Función para borrar credenciales de AsyncStorage
   const clearCredentials = async () => {
     try {
       await AsyncStorage.removeItem('idEmpresa');
@@ -116,9 +103,9 @@ const LoginScreen = () => {
       setAccessToken(response.data.data.token);
 
       if (remember) {
-        await saveCredentials(); // Guarda las credenciales si el usuario activó "Remember Me"
+        await saveCredentials();
       } else {
-        await clearCredentials(); // Borra las credenciales si "Remember Me" no está activo
+        await clearCredentials();
       }
 
     } catch (error) {
@@ -140,151 +127,129 @@ const LoginScreen = () => {
     }
   };
 
-  const textStyle = {
-    color: config.darkMode ? '#fff' : 'black',
-  };
-
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={[styles.flex, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.colors.card,
+                borderRadius: theme.radius.lg,
+                padding: theme.spacing.xxl,
+                ...theme.shadow,
+              },
+            ]}
+          >
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
 
-          <TouchableWithoutFeedback onPress={handlePress}>
-            <Animated.Text style={[styles.title, textStyle, { transform: [{ scale: scaleValue }] }]}>
+            <Text style={[styles.title, { color: theme.colors.text, fontSize: theme.typography.fontSize.xl }]}>
               Iniciar Sesión
-            </Animated.Text>
-          </TouchableWithoutFeedback> 
+            </Text>
 
-          {showInput && (
-            <View style={{ 
-              display:"flex",
-              flexDirection: 'row', 
-              alignItems: 'center', 
-              marginBottom: 20 
-            }}>
-              {/* <Text style={[{ marginRight: 10, fontSize: 16 }, textStyle]}>ID de Empresa</Text> */}
-              {/* <TextInputField
-                placeholder="Empresa"
+            <TextInput
+              placeholder="Username o Email"
+              iconName="person-outline"
+              value={username}
+              onChangeText={setUsername}
+              editable={!loading}
+              autoCapitalize="none"
+            />
+
+            <TextInput
+              placeholder="Contraseña"
+              iconName="lock-outline"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              editable={!loading}
+            />
+
+            {showEmpresa ? (
+              <TextInput
+                label="Empresa"
+                placeholder="Código Empresa"
+                iconName="business"
                 keyboardType="numeric"
                 value={idEmpresa}
                 onChangeText={setIdEmpresa}
                 editable={!loading}
-                style={{
-                  // flex: 1,
-                  width:100,
-                  height: 45,
-                }}
-              /> */}
-              <Input
-                label="Empresa"
-                placeholder="Codigo Empresa"
-                iconName="business"
-                iconPosition="right"
-                keyboardType='numeric'
-                value={idEmpresa}
-                onChangeText={setIdEmpresa}
-                // editable={!loading}
-                // error={errorMessage}
               />
+            ) : (
+              <TouchableOpacity onPress={() => setShowEmpresa(true)} style={styles.empresaToggle}>
+                <Text style={{ color: theme.colors.primary, fontSize: theme.typography.fontSize.sm }}>
+                  Cambiar código de empresa
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={[styles.rememberContainer, { marginBottom: theme.spacing.xl }]}>
+              <CheckBox remember={remember} setRemember={setRemember} disabled={loading} />
+              <Text style={[styles.rememberText, { color: theme.colors.text, marginLeft: theme.spacing.sm }]}>
+                Recordar mis datos
+              </Text>
             </View>
-          )}
 
-
-          <TextInputField
-            placeholder="Username o Email"
-            value={username}
-            onChangeText={setUsername}
-            editable={!loading}
-          />
-
-          <TextInputField
-            placeholder="Contraseña"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            editable={!loading}
-          />
-
-          <View style={styles.rememberContainer}>
-            <Text style={[styles.rememberText, textStyle]}>Recordar</Text>
-            {/* <TouchableOpacity
-              style={[styles.checkbox, remember ? styles.checkboxSelected : null]}
-              onPress={() => setRemember(!remember)}
+            <Button
+              title="Ingresar"
+              onPress={handleLogin}
+              loading={loading}
               disabled={loading}
-            /> */}
-            <CheckBox
-              remember={remember}
-              setRemember={()=>setRemember(!remember)}
-              disabled={loading}
+              style={styles.submitButton}
             />
           </View>
-
-
-          <TouchableOpacity
-            style={[styles.loginButton, loading && { backgroundColor: config.darkMode ? '#333' : '#07608f' }]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Ingresar</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
-    // backgroundColor: '#f5f5f5',
+  },
+  card: {
+    width: '100%',
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+  },
+  empresaToggle: {
+    marginBottom: 16,
   },
   rememberContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
   },
   rememberText: {
-    fontSize: 16,
-    marginRight: 10,
+    fontSize: 15,
   },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderColor: '#333',
-    borderWidth: 1,
-    borderRadius: 3,
-  },
-  checkboxSelected: {
-    backgroundColor: '#333',
-  },
-  loginButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 15,
-    borderRadius: 5,
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#cccccc',
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
+  submitButton: {
+    paddingVertical: 14,
   },
 });
 

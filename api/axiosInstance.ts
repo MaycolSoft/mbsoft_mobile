@@ -2,7 +2,7 @@
 import axios from 'axios';
 import useAuthStore from '@/store/useStore';
 
-const baseURL = 'https://erp.mbsoft.freeddns.org/';
+const baseURL = 'http://10.15.15.117:8000/';
 
 const axiosInstance = axios.create({
   baseURL,

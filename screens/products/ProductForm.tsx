@@ -4,8 +4,9 @@ import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Provider, Portal, ActivityIndicator } from 'react-native-paper';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Linking, Alert} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Linking} from 'react-native';
 import { postRequest, getRequest, deleteRequest, isAxiosError } from '@/api/apiService';
+import { showAlert } from '@/components/AppAlert';
 
 
 import CustomException from '@/Utils/CustomException';
@@ -477,7 +478,7 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
                             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
                             if (status === 'denied') {
-                              Alert.alert(
+                              showAlert(
                                 'Permisos denegados',
                                 'Has denegado los permisos para acceder a la galería. Ve a la configuración de la app para habilitarlos.',
                                 [

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Image, ActivityIndicator, StyleSheet } from 'react-native';
 import axios from 'axios';
+import { showAlert } from '@/components/AppAlert';
 
 const API_URL = 'https://rickandmortyapi.com/api/character';
 const MAX_ITEMS = 50;
@@ -44,7 +45,7 @@ const CharacterList: React.FC = () => {
       if (error.response?.data?.error === 'There is nothing here') {
         setHasMore(false);
       } else {
-        Alert.alert('Error', 'No se pudo cargar los personajes.');
+        showAlert('Error', 'No se pudo cargar los personajes.');
       }
     } finally {
       setLoading(false);

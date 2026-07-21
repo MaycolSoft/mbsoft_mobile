@@ -13,15 +13,21 @@ interface StoreState {
   [key: string]: any; // Agrega esta línea para permitir propiedades adicionales
 }
 
+export type TextSize = 'small' | 'medium' | 'large';
+
 interface AppConfig {
   darkMode: boolean;
   language: string;
+  accentColor?: string;
+  cardTint?: string;
+  textSize: TextSize;
   // Agrega más configuraciones si necesitas
 }
 
 const initialConfig: AppConfig = {
   darkMode: false,
   language: 'es',
+  textSize: 'medium',
 };
 
 const useStore = create<StoreState>()(
