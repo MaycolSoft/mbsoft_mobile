@@ -21,6 +21,7 @@ interface AppConfig {
   accentColor?: string;
   cardTint?: string;
   textSize: TextSize;
+  apiUrl?: string;
   // Agrega más configuraciones si necesitas
 }
 

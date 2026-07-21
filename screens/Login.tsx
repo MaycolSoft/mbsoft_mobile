@@ -14,6 +14,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { postRequest, isAxiosError } from '@/api/apiService';
+import { DEFAULT_BASE_URL } from '@/api/axiosInstance';
 import useStore from '@/store/useStore';
 import { useTheme } from '@/theme/ThemeProvider';
 import TextInput from '@/components/TextInput';
@@ -28,8 +29,12 @@ const LoginScreen = () => {
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showEmpresa, setShowEmpresa] = useState(false);
+  const [showServerConfig, setShowServerConfig] = useState(false);
 
   const setAccessToken = useStore((state) => state.setAccessToken);
+  const apiUrl = useStore((state) => state.config.apiUrl);
+  const updateConfig = useStore((state) => state.updateConfig);
+  const [serverUrl, setServerUrl] = useState(apiUrl || DEFAULT_BASE_URL);
 
   useEffect(() => {
     const loadCredentials = async () => {
@@ -194,6 +199,37 @@ const LoginScreen = () => {
               </TouchableOpacity>
             )}
 
+            {showServerConfig ? (
+              <View>
+                <TextInput
+                  label="URL del servidor"
+                  placeholder="http://ip:puerto/"
+                  iconName="dns"
+                  value={serverUrl}
+                  onChangeText={setServerUrl}
+                  editable={!loading}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Button
+                  title="Guardar servidor"
+                  variant="light"
+                  onPress={() => {
+                    updateConfig({ apiUrl: serverUrl.trim() || undefined });
+                    setShowServerConfig(false);
+                    Toast.show({ type: 'success', text1: 'Servidor actualizado', text2: serverUrl.trim() || DEFAULT_BASE_URL });
+                  }}
+                  style={{ marginBottom: theme.spacing.lg }}
+                />
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => setShowServerConfig(true)} style={styles.empresaToggle}>
+                <Text style={{ color: theme.colors.primary, fontSize: theme.typography.fontSize.sm }}>
+                  Configurar servidor
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <View style={[styles.rememberContainer, { marginBottom: theme.spacing.xl }]}>
               <CheckBox remember={remember} setRemember={setRemember} disabled={loading} />
               <Text style={[styles.rememberText, { color: theme.colors.text, marginLeft: theme.spacing.sm }]}>
@@ -230,8 +266,10 @@ const styles = StyleSheet.create({
   logo: {
     width: 96,
     height: 96,
+    borderRadius: 48,
     alignSelf: 'center',
     marginBottom: 12,
+    overflow: 'hidden',
   },
   title: {
     fontWeight: '700',
