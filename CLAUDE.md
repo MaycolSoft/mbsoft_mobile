@@ -8,89 +8,83 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run android` — build/run on Android (`expo run:android`)
 - `npm run ios` — build/run on iOS (`expo run:ios`)
 - `npm run web` — start web build (`expo start --web`)
-- `npm test` — run Jest tests in watch mode (`jest --watchAll`)
-  - Single test file: `npx jest components/__tests__/ThemedText-test.tsx`
+- `npm test` — run Jest tests in watch mode (`jest --watchAll`) — no test files currently exist in the repo
 - `npm run lint` — `expo lint`
-- `npm run reset-project` — moves starter code aside and creates a blank `app/` (see `scripts/reset-project.js`); not relevant to this app's current structure, inherited from `create-expo-app`
 
-Package manager is Yarn per `package.json`'s `packageManager` field, though `npm` scripts work too. This is an Expo (SDK 54) / React Native 0.81 app using the classic navigation stack, not Expo Router — the `___app/` directory is legacy file-router boilerplate left over from `create-expo-app` and is not wired into the app (note the `___` prefix keeps it out of the routable tree). Don't treat `___app/` as live code or extend it; the README's mention of file-based routing under `app/` is stale.
+Package manager is Yarn per `package.json`'s `packageManager` field, though `npm` scripts work too. This is an Expo (SDK 54) / React Native 0.81 app using `@react-navigation` v7 (stack + drawer) — not Expo Router. There is no `expo-router` dependency at all; don't add router-style files.
 
-## Architecture
-
-**Entry point & navigation**: [App.tsx](App.tsx) is the real root component (not the one under `___app/`). It wraps everything in gluestack-ui's `StyledProvider`/`OverlayProvider`, sets up a `@react-navigation/stack` navigator, and picks between the `Login` or `Home` screen based on `accessToken` in the Zustand store — this is the entire auth gate. There's a duplicate `components/App.tsx`; the one imported by the app is the top-level `App.tsx`.
-
-**Post-login shell**: [screens/Home.tsx](screens/Home.tsx) renders a `@react-navigation/drawer` navigator that hosts all the authenticated screens (Products, Telescope/Iframe, Settings, Portfolio, Prices, Http Log, Crear Producto, Logout). Logout is a screen component that clears the access token as a side effect on mount rather than a button handler.
-
-**State (Zustand)**: [store/useStore.ts](store/useStore.ts) exports two independent stores:
-- `useStore` (default export, aliased `useAuthStore` in some files) — `accessToken` and an `AppConfig` (`darkMode`, `language`). Only `config` is persisted to `AsyncStorage` via `zustand/middleware`'s `persist`; `accessToken` is intentionally not persisted (deliberate — session doesn't survive app restart... verify with the team if this is an assumption vs. intentional).
-- `useLogStore` — an in-memory ring of HTTP request logs, fed by the API layer, rendered by `components/LogScreen.tsx` under the "Http Log" drawer item.
-
-**API layer**: [api/axiosInstance.ts](api/axiosInstance.ts) creates a single axios instance pointed at a hardcoded `baseURL` and attaches the bearer token from `useStore` via a request interceptor. [api/apiService.ts](api/apiService.ts) wraps `get/post/put/delete` and logs every call into `useLogStore` before dispatching — always go through these helpers (not raw axios) so requests show up in the in-app log screen. `isAxiosError` is the type guard used across screens to branch server-message vs. generic-error toasts.
-
-**Theming**: Dark/light mode is driven by `config.darkMode` in the Zustand store (not the OS scheme) and is threaded manually into `@react-navigation`'s `Theme` object in `App.tsx`, plus ad hoc `config.darkMode ? … : …` conditionals inside individual screens/components (see `screens/Login.tsx`, `screens/Home.tsx`). `hooks/useColorScheme.ts` / `constants/Colors.ts` exist from the Expo template but are largely superseded by this store-driven approach — check which pattern a given screen already uses before adding new theming.
-
-**Path alias**: `@/*` maps to the repo root (`tsconfig.json`), e.g. `@/store/useStore`, `@/screens/Login`.
-
-**Types**: shared interfaces (e.g. `Product`, `DropdownProps`, `ProductOverlayProps`) live in `interfaces/index.ts` rather than being colocated with components.
-
-**Credentials**: `credentials.json` and `credentials/` contain real iOS/Android signing material referenced by `eas.json` — treat as sensitive, don't print contents or move outside their expected paths.
+Useful checks after any change: `npx tsc --noEmit`, `npx expo-doctor` (should read 18/18), `npx expo export --platform web` (bundles Metro end-to-end without needing a simulator — the fastest way to catch a broken import/type from here).
 
 ## Project status (as of 2026-07-21)
 
-This is an **abandoned project** the user set aside after an Expo upgrade broke it. A newer project (`mbsoftapp`, separate repo) was started with select files carried over, but this repo has more screens/logic and is kept around as a source to salvage from — not for active development unless told otherwise.
+This project was previously abandoned after an Expo SDK bump broke it (see "History" below), but is now **actively being revived** — dependencies are fixed, the app boots, and it's being rebuilt screen-by-screen with a proper design system. A separate, smaller repo (`mbsoftapp`) exists that was used as a stopgap while this one was broken; this repo has more real screens/business logic and is the one being developed going forward.
 
-### Why it likely broke
+## Architecture
 
-`npx expo-doctor` (installed `node_modules`) reports:
-- **Missing peer dependency**: `react-native-reanimated` (v4.2.2) requires `react-native-worklets`, but the project only has `react-native-worklets-core` (a different, older package used by Reanimated v2/v3). This is the most probable native-crash cause after upgrading — Reanimated v4 changed its native worklets backend and the app never picked up the new required package.
-- **`jest-expo` major mismatch**: installed `52.0.6`, SDK 54 expects `~54.0.17` — test runner is two SDK majors behind.
-- Minor/patch drift: `react-native-reanimated`, `@types/react`, `@types/react-dom`, `typescript`, `expo-image-picker`, `expo-web-browser` all slightly behind what SDK 54 expects.
-- Installed versions: Expo `54.0.36`, React Native `0.81.5`, React `19.1.0` (per `node_modules`, these look current/self-consistent — the mismatches are all in the *other* packages around them, not Expo core itself).
+**Entry point & navigation**: [App.tsx](App.tsx) is the root component. It wraps the tree in `ThemeProvider` (see Theming below), `NavigationContainer` (theme derived from the same tokens), a `@react-navigation/stack` navigator that picks `Login` or `Home` based on `accessToken` in the Zustand store (the entire auth gate), plus `<Toast />` and `<AppAlertProvider />` mounted once at the root.
 
-Net: the SDK core is fine; the breakage is from dependencies (especially Reanimated's worklets backend and `jest-expo`) not being bumped in lockstep with the Expo SDK bump.
+**Post-login shell**: [screens/Home.tsx](screens/Home.tsx) renders a `@react-navigation/drawer` navigator with a custom [components/DrawerContent.tsx](components/DrawerContent.tsx) (logo header, themed nav items with icons, logout pinned at the bottom with a confirmation via `showAlert`). Hosts: Productos, Crear Producto, Telescope, Prices, Portfolio, Http Log, Config. Negocio, Settings.
 
-### Navigation & state (confirmed)
+**State (Zustand)**: [store/useStore.ts](store/useStore.ts) exports two independent stores:
+- `useStore` (default export) — `accessToken` (not persisted — session doesn't survive app restart, deliberate) and `config: AppConfig` (persisted to AsyncStorage via `zustand/middleware`'s `persist`): `darkMode`, `language`, `accentColor`, `cardTint`, `textSize` (all consumed by the theme system), and `apiUrl` (overrides the API base URL — see below).
+- `useLogStore` — in-memory HTTP request log, fed by the API layer, rendered by `components/LogScreen.tsx` under "Http Log".
 
-React Navigation only (stack + drawer) — **no expo-router in actual use**. `zustand` is the only state manager. See "Architecture" above for the auth-gate/store/API details.
+**API layer**: [api/axiosInstance.ts](api/axiosInstance.ts) exports `DEFAULT_BASE_URL` and reads the *actual* base URL per-request from `useStore`'s `config.apiUrl` (falls back to the default) — this is user-configurable from the Login screen's "Configurar servidor" section, so switching between a local dev server/staging/production doesn't require editing code or rebuilding. The bearer token is attached the same way. [api/apiService.ts](api/apiService.ts) wraps `get/post/put/delete`, logs every call into `useLogStore` — always go through these helpers, not raw axios. `isAxiosError` is the shared type guard for server-message vs. generic-error toasts. Endpoint prefix convention: calls include `api/` explicitly (e.g. `postRequest("api/login", ...)`) since the base URL is just the domain root, not `.../api`.
 
-### Screens & components, one-liner each
+**Theming — the design system** (this is the main thing to understand before touching any screen):
+- [theme/theme.ts](theme/theme.ts) — `buildTheme(dark, options)` returns the full token set: `colors` (background/surface/card/text/textMuted/border/primary/onPrimary/success/warning/danger/disabled), `spacing` (xs→xxxl, 4px steps), `radius` (sm/md/lg/full), `typography` (fontSize scale + fontWeight), `shadow`. `options` lets `accentColor`/`cardTint` (looked up from curated `accentSwatches`/`cardTintSwatches`, each with light+dark variants) and `textSize` (`textSizeScale`, scales every `fontSize` by a multiplier) override the defaults.
+- [theme/ThemeProvider.tsx](theme/ThemeProvider.tsx) — `ThemeProvider` wraps the app, reads `darkMode`/`accentColor`/`cardTint`/`textSize` from the Zustand store (not OS scheme, not a separate context state) and memoizes the built theme; `useTheme()` hook reads it. **Every themed screen/component calls `useTheme()` and reads colors/spacing/etc. from it — never hardcode hex colors in new code.**
+- Screen-level dark mode/appearance controls live in [screens/Settings.tsx](screens/Settings.tsx): dark mode switch, accent color swatches, card tint swatches, text size segmented control — all funnel into `updateConfig()`.
 
-- `screens/Login.tsx` — login form (empresa/usuario/contraseña), posts to `api/login`, optional "remember me" via AsyncStorage, sets the Zustand access token.
-- `screens/Home.tsx` — post-login drawer shell hosting all screens below plus a no-render Logout item.
-- `screens/products/ProductListScreen.tsx` — product list/grid screen with search, pagination, add/edit via modal `ProductForm`, category modal.
-- `screens/products/ProductForm.tsx` (807 lines — largest screen) — full create/edit product form: fields, category/unit/tax dropdowns, image picker/camera integration.
+**Shared component library** (in `components/`, all theme-driven, no external UI kit):
+- `TextInput.tsx` — themed text input with label/icon/error/focus state (uses `@expo/vector-icons` glyph-map lookup for the icon).
+- `Button.tsx` — variant/size/icon/loading, colors from theme tokens.
+- `CheckBox.tsx`, `Dropdown.tsx` (custom overlay via RN's own `Modal`, not a portal library), `Modal.tsx` (generic themed modal: title + content slot + optional footer), `AppAlert.tsx` (singleton replacement for `Alert.alert`/`window.confirm` — mount `<AppAlertProvider />` once at the root, then call `showAlert(title, message, buttons)` from anywhere; **use this instead of `Alert.alert`**, it's the only way alerts look consistent across iOS/Android/web).
+- `Tabs.tsx` (pill-style tab switcher + content area), `Badge.tsx` (boolean/status pill), `TagInput.tsx` (chip input), `ColorSwatchPicker.tsx`, `SettingsSection.tsx`/`SettingsRow.tsx` (card+row primitives used to build settings-style screens).
+- `InputField.tsx` — an older, not-yet-themed plain text input, still used by `ProductForm.tsx`/`ProductListScreen.tsx`'s remaining spots that haven't been migrated to `TextInput.tsx` yet. Check which one a given screen already uses before adding new fields.
+- `react-native-paper` is still used directly (not through a shared wrapper) in `ProductForm.tsx`, `CategoryModal.tsx`, and `LogScreen.tsx` for their own `Modal`/`Portal`/`Provider` — each of those wraps itself in its own local `<Provider>`, so they're self-contained and don't depend on any ancestor screen providing one.
+
+**Business configuration** ([screens/business/](screens/business/)): a "Config. Negocio" drawer entry hosting 4 tabs via `components/Tabs.tsx`, ported from a companion web frontend (`REACT-MBSOFT`, separate repo) — general business info + logo upload, NCF (fiscal receipt series) management with a series sub-editor in a `Modal`, database backups (create/list/delete — no download on mobile, by design), and a scheduled-tasks/cron builder. All endpoints assume the same `api/` prefix convention as the rest of the app; flagged in the screens themselves as an assumption to verify against the real backend if anything 404s.
+
+**Path alias**: `@/*` maps to the repo root (`tsconfig.json`), e.g. `@/store/useStore`, `@/theme/ThemeProvider`.
+
+**Types**: shared interfaces (`Product`, `DropdownProps`, `ProductOverlayProps`, etc.) live in `interfaces/index.ts` rather than being colocated with components.
+
+**Credentials**: `credentials.json` and `credentials/` contain real iOS/Android signing material referenced by `eas.json` — treat as sensitive, don't print contents or move outside their expected paths.
+
+## Screens & components, one-liner each
+
+- `screens/Login.tsx` — login form (username/password, collapsible empresa code field, collapsible server-URL config), posts to `api/login`, "remember me" via AsyncStorage, sets the Zustand access token. Rounded logo, fully themed.
+- `screens/Home.tsx` — post-login drawer shell (see Architecture above).
+- `screens/Settings.tsx` — dark mode, accent/card color, text size, and a placeholder "Impresoras" section (UI only, no hardware integration yet).
+- `screens/business/*` — see "Business configuration" above.
+- `screens/products/ProductListScreen.tsx` — product search/list with a working Grid⇄List toggle, add/edit via `Modal` → `ProductForm`.
+- `screens/products/CustomListTest.tsx` — despite the "Test" name, this is live code: exported as `ProductOverlay`, the actual grid/list renderer used by `ProductListScreen`. Renders memoized `GridCard`/`ListRow` items, each with a `Carousel` and marquee-style auto-scrolling description text for long names.
+- `screens/products/ProductForm.tsx` (~800 lines — largest screen) — full create/edit product form: fields, category/unit/tax dropdowns, image picker/camera integration. Not yet migrated to the `TextInput`/theme system — still uses `InputField.tsx` and hardcoded colors in places.
 - `screens/products/CategoryModal.tsx` — small `react-native-paper` modal to add a new product category inline.
-- `screens/products/CustomListTest.tsx` — despite the "Test" name, this is live code: exported as `ProductOverlay`, the grid/list renderer used by `ProductListScreen`.
-- `screens/Portfolio.tsx` — demo/placeholder screen listing Rick & Morty API characters (paginated `FlatList`); not real business logic, looks like a leftover scaffolding/demo screen.
-- `screens/Prices.tsx` — stub screen, just a "Prices Screen" placeholder, no logic yet.
-- `screens/Settings.tsx` — minimal screen exposing only the dark-mode toggle.
-- `components/LogScreen.tsx` — renders the `useLogStore` HTTP call log (the "Http Log" drawer item).
-- `components/Iframe.tsx` — "Telescope" webview/browser screen, opened either as in-app WebView or external browser (choice driven from `Home.tsx`'s drawer listener).
-- `components/Carousel.tsx` — current image/text carousel used in the product list (built on `react-native-reanimated-carousel`).
+- `screens/Portfolio.tsx` — demo/placeholder screen listing Rick & Morty API characters; not real business logic, candidate to drop.
+- `screens/Prices.tsx` — stub screen, no logic yet.
+- `components/LogScreen.tsx` — renders the `useLogStore` HTTP call log.
+- `components/Iframe.tsx` — "Telescope" webview/browser screen, opened either as in-app WebView or external browser (choice from `Home.tsx`'s drawer listener + `showAlert`).
+- `components/Carousel.tsx` — image/text carousel (built on `react-native-reanimated-carousel`), used by the product list cards.
 - `components/Camera.tsx` — camera capture flow for product images (`expo-camera`/`expo-image-picker`).
-- `components/Dropdown.tsx` — generic dropdown/select used across product form and list filters.
-- `components/SearchBar.tsx` — search input used in `ProductListScreen`.
-- `components/Input.tsx` / `components/InputField.tsx` — two parallel text-input components (icon-aware `Input`, simpler `InputField`); both are actively used in different screens, not a clean duplication.
-- `components/CheckBox.tsx`, `components/Button.tsx`, `components/Dropdown.tsx` — small shared form controls.
-- `components/DarkModeButton.tsx` — toggles `config.darkMode` in the Zustand store.
-- `components/AutoScrollingText.tsx`, `HelloWave.tsx`, `Collapsible.tsx`, `ParallaxScrollView.tsx`, `ThemedText.tsx`, `ThemedView.tsx`, `ExternalLink.tsx`, `components/navigation/TabBarIcon.tsx` — Expo template boilerplate, largely orphaned now that the app uses its own screens/navigation (worth checking usage before assuming any given one is dead).
+- `components/AutoScrollingText.tsx` — orphaned template-era component, not imported anywhere; not the marquee text used in the product list (that's inlined as `AnimatedText` in `CustomListTest.tsx`).
 
-### Confirmed dead code / template remnants
+## History: why the project broke, and what's been fixed since
 
-- **`components/BORRARCarousel.tsx`** — Spanish for "DELETE Carousel"; not imported anywhere. Superseded by `components/Carousel.tsx`. Safe to delete.
-- **`components/App.tsx`** — a second, unused copy of the root `App` component; the real entry point is the top-level `App.tsx`. Not imported anywhere.
-- **`components/BottomTabs.tsx`** — defined, exported, but not imported anywhere in the app; leftover from an earlier tab-based nav approach (`git log` shows `refactor(Home): home screen and bottom tabs` then later drawer-based work superseded it).
-- **`___app/`** (entire directory: `_layout.tsx`, `+html.tsx`, `+not-found.tsx`, `(tabs)/*`) — Expo Router template scaffold, prefixed with `___` specifically so it's excluded from the routable tree. Confirmed unused; the app never calls into expo-router.
-- **`scripts/reset-project.js`** — template script for resetting to a blank `app/`; irrelevant given the app doesn't use `app/`-based routing.
-- Template leftovers likely dead: `hooks/useColorScheme.ts`/`.web.ts`, `constants/Colors.ts` (superseded by the Zustand-driven dark mode) — not deleted here, just flagged as candidates.
-- **`screens/Portfolio.tsx` and `screens/Prices.tsx`** — placeholder/demo screens (Rick & Morty API list, static text) with no real business value; likely fine to drop when porting to the new project.
+`react-native-reanimated` v4 requires `react-native-worklets` (not the older `react-native-worklets-core`) as a direct dependency, and `@react-navigation` v6 doesn't work with Reanimated v3+'s native worklets backend (throws on the Drawer navigator specifically). Both are now fixed: `react-native-worklets` is a direct dep, and all `@react-navigation/*` packages are on v7. `jest-expo` and other SDK-managed packages were realigned via `npx expo install --fix`. `expo-doctor` reads 18/18 clean.
 
-### Unused dependencies (declared in `package.json`, no import found in app code)
+Also removed as part of the revival: the entire `___app/` expo-router scaffold (never wired in, `expo-router` isn't even installed), `scripts/reset-project.js`, `gluestack-ui` (fully replaced by the theme system above — no `@gluestack-ui/*` import remains anywhere), and a cluster of unused Expo-template leftovers (`ThemedText`/`ThemedView`/`Collapsible`/`ParallaxScrollView`/`HelloWave`/`TabBarIcon`, `hooks/useColorScheme*`, `hooks/useThemeColor.ts`, `constants/Colors.ts`, the old gluestack-based `components/Input.tsx`, `components/App.tsx` duplicate, `components/BottomTabs.tsx`, `components/BORRARCarousel.tsx`, `components/DarkModeButton.tsx` — superseded by the Switch in `Settings.tsx`).
 
-`@expo/metro-runtime`, `@expo/ngrok`, `@radix-ui/react-form`, `@radix-ui/react-menu`, `@react-native-aria/focus`, `@react-native-aria/interactions`, `@react-native-aria/overlays`, `@react-native-aria/utils`, `@react-native-picker/picker`, `@react-navigation/native-stack`, `expo-constants`, `expo-dev-client`, `expo-linking`, `expo-status-bar`, `expo-system-ui`, `react-dom`, `react-native-gesture-handler`, `react-native-modal`, `react-native-screens`, `react-native-svg`, `react-native-worklets-core`.
+### Unused dependencies still in `package.json` (not yet pruned)
 
-Caveats: some of these are transitive requirements of other libraries (e.g. `react-native-screens`/`react-native-gesture-handler` for `@react-navigation`, `@react-native-aria/*`/`@radix-ui/*` for gluestack-ui internals, `expo-system-ui`/`expo-constants` for Expo's own config) and shouldn't be removed just because there's no direct `import` — verify each before pruning. `react-native-worklets-core` is a real red flag though: it's the *wrong* worklets package for the installed Reanimated v4 (see "Why it likely broke" above).
+`@gluestack-ui/config`, `@gluestack-ui/overlay`, `@gluestack-ui/themed`, `@radix-ui/react-form`, `@radix-ui/react-menu`, `@react-native-aria/*`, `@react-native-picker/picker`, `@react-navigation/bottom-tabs`, `@react-navigation/native-stack`, `@expo/metro-runtime`, `@expo/ngrok`, `expo-constants`, `expo-linking`, `expo-system-ui`, `react-dom`, `react-native-gesture-handler`, `react-native-modal`, `react-native-screens`, `react-native-svg`.
 
-### What this project has that the newer `mbsoftapp` may not (candidates to port)
+Caveats before pruning: some are likely transitive requirements of `@react-navigation` (`react-native-screens`, `react-native-gesture-handler`) even without a direct import — verify each rather than bulk-removing. The `@gluestack-ui/*`/`@radix-ui/*`/`@react-native-aria/*` trio is the safest bet to remove since gluestack-ui has zero imports left anywhere in the app.
 
-Based on the file inventory here (full products CRUD flow, camera/image picker, category management, HTTP request log viewer, Telescope/iframe integration, dark mode via Zustand+persisted AsyncStorage, gluestack-ui theming) — worth confirming against the new project's actual contents, since this repo has no visibility into `mbsoftapp`'s current file tree. Point Claude at that repo directly (or paste its file list) for a real diff rather than relying on the user's recollection.
+### Still-placeholder / lower-priority areas
+
+- `screens/Portfolio.tsx`, `screens/Prices.tsx` — no real business value, fine to drop.
+- Settings → "Impresoras" section — UI-only placeholder, no printer discovery/connection logic yet (deliberately deferred).
+- `components/InputField.tsx` usages in `ProductForm.tsx`/`ProductListScreen.tsx`'s remaining spots, and `Dropdown.tsx`'s consumers in `ProductForm.tsx` — not yet migrated, though `Dropdown.tsx`/`SearchBar.tsx` themselves are already theme-aware.
+- `CustomListTest.tsx` naming — still says "Test" despite being live code; a pure rename (+ updating its one import) hasn't been done yet.
