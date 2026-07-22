@@ -142,19 +142,22 @@ base URL is the domain root.
 | Suspend | `POST api/suspend_invoice/resumeInvoice/{id}` | Resume a suspended sale |
 | Returns | `GET api/notas_de_credito/getFacturaToCancelar` | Find invoice and refundable quantities |
 | Returns | `POST api/notas_de_credito/cancelarFactura` | Create credit note; logged-in user must have role 3 |
-| History | `POST api/pos/getFacturas` | Paged invoice search for reprint; uses legacy filter groups |
+| History | `POST api/pos/getFacturas` | Paged invoice search/reprint with flat filters and date ranges |
 
 Important response/payload exceptions:
 
 - `getProductsSession` returns the cash drawer and cart together; always refetch it
   after a server mutation instead of inventing a second local cart.
 - Product search returns a Laravel paginator nested in the project's API envelope.
-- `getCustomers` and `getFacturas` have legacy response shapes different from the
-  newer `ApiSuccess(data)` convention. Normalize them in `posApi.ts`, not in views.
+- `getCustomers` retains a legacy response shape. Normalize it in `posApi.ts`, not
+  in views.
 - `storeInvoice` returns `idFactura` and `url_reporte`. Phase 1 should open the
   report through `expo-web-browser`/`Linking`; direct thermal printing is separate.
-- `getFacturas` uses zero-based `pagenum` and legacy `filterGroups`. The exact date
-  filter also requires a sibling `filtervalue{index}` field. See the web POS doc.
+- `getFacturas` now uses the standard `ApiSuccess(<Laravel paginator>)` envelope,
+  1-based `page`/`per_page`, `sort`/`order`, general `search`, partial
+  `num_factura`/`ncf`/`rnc`, `id_cliente`/`id_usuario`, and an inclusive
+  `re_imprimir_start_date`/`re_imprimir_end_date` range. When `num_factura` is
+  present the backend deliberately ignores the date range.
 - The web `usePosCart` condition around `unidad.venta_decimal` appears inverted:
   it rounds when the flag is not `'false'`. Confirm this contract with real integer
   and decimal products before copying that behavior.
@@ -296,10 +299,10 @@ ported directly from the web JS, unconfirmed live.
 
 #### Phase 3 — history and fiscal returns
 
-- [ ] Add paginated invoice history/reprint using the documented legacy contract.
-- [ ] Open/share the signed report URL with a clear expired-link error state.
-- [ ] Add invoice lookup, partial quantity return and DGII 01..10 classification.
-- [ ] Make the role-3 restriction visible before submission when user metadata allows;
+- [x] Add paginated invoice history/reprint using the current flat-filter contract.
+- [x] Open the signed report URL with a clear expired-link error state.
+- [x] Add invoice lookup, partial quantity return and DGII 01..10 classification.
+- [x] Make the role-3 restriction visible before submission when user metadata allows;
   still handle backend 403 as authoritative.
 
 Acceptance: reprints and supported credit-note returns work without the web app.
@@ -320,7 +323,7 @@ Acceptance: reprints and supported credit-note returns work without the web app.
 There are no existing tests, so split business calculations and API normalization
 into pure functions that can receive focused Jest tests. At minimum test totals,
 mixed payments/vuelto, RNC requirements, quantity parsing, refundable quantities
-and legacy paginator normalization. After each phase run `npx tsc --noEmit` and
+and paginator normalization. After each phase run `npx tsc --noEmit` and
 `npm run lint`; before handoff also run `npx expo export --platform web`. Device-test
 camera, keyboard, safe areas and report opening on at least one iPhone and Android.
 

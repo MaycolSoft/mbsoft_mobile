@@ -135,6 +135,33 @@ export interface PosInvoice {
   [key: string]: any;
 }
 
+export type PosInvoiceSortField =
+  | 'created_at'
+  | 'numero_factura'
+  | 'ncf'
+  | 'total'
+  | 'total_tax';
+
+export interface PosInvoiceFilters {
+  search: string;
+  numFactura: string;
+  startDate: string;
+  endDate: string;
+  ncf: string;
+  rnc: string;
+  customerId: string;
+  userId: string;
+}
+
+export interface PosInvoicePaginator {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from?: number | null;
+  to?: number | null;
+}
+
 export interface PosInvoiceDetailLine {
   id_producto: number;
   description?: string;

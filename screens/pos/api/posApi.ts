@@ -15,6 +15,8 @@ import {
   PosCuadrePreview,
   PosInvoice,
   PosInvoiceDetail,
+  PosInvoicePaginator,
+  PosInvoiceSortField,
   PosNcf,
   PosProduct,
   PosSuspendedInvoice,
@@ -120,43 +122,56 @@ export async function resumeSuspendedInvoice(idSuspension: number) {
   return response.data;
 }
 
-// Contrato legacy, no modernizado (a diferencia de otras pantallas de esta
-// app): pagenum es 0-indexado, y un filtro por fecha exige además un campo
-// hermano "filtervalue{index}" con el índice de ese grupo dentro de
-// filterGroups. Ver CLAUDE.md / docs/pos-invoicing.md del repo web.
 export async function getFacturas(params: {
-  pagenum: number;
-  pagesize: number;
-  sortdatafield: string;
-  sortorder: 'asc' | 'desc';
-  numeroFactura?: string;
-  dateFilter?: string;
-}): Promise<{ invoices: PosInvoice[]; meta: any }> {
-  const filterGroups: any[] = [];
+  page: number;
+  perPage: number;
+  sort: PosInvoiceSortField;
+  order: 'asc' | 'desc';
+  search?: string;
+  numFactura?: string;
+  startDate?: string;
+  endDate?: string;
+  ncf?: string;
+  rnc?: string;
+  customerId?: string;
+  userId?: string;
+}): Promise<{ invoices: PosInvoice[]; meta: PosInvoicePaginator }> {
   const payload: Record<string, any> = {
-    pagenum: params.pagenum,
-    pagesize: params.pagesize,
-    sortdatafield: params.sortdatafield,
-    sortorder: params.sortorder,
+    page: params.page,
+    per_page: params.perPage,
+    sort: params.sort,
+    order: params.order,
   };
 
-  if (params.numeroFactura?.trim()) {
-    filterGroups.push({ field: 'numero_factura', filters: [{ value: params.numeroFactura.trim() }] });
-  }
-
-  if (params.dateFilter) {
-    const dateIndex = filterGroups.length;
-    filterGroups.push({ field: 'created_at', filters: [{ value: params.dateFilter }] });
-    payload[`filtervalue${dateIndex}`] = params.dateFilter;
-  }
-
-  if (filterGroups.length > 0) {
-    payload.filterscount = filterGroups.length;
-    payload.filterGroups = filterGroups;
-  }
+  const optionalFilters = {
+    search: params.search?.trim(),
+    num_factura: params.numFactura?.trim(),
+    re_imprimir_start_date: params.startDate?.trim(),
+    re_imprimir_end_date: params.endDate?.trim(),
+    ncf: params.ncf?.trim(),
+    rnc: params.rnc?.trim(),
+    id_cliente: params.customerId?.trim(),
+    id_usuario: params.userId?.trim(),
+  };
+  Object.entries(optionalFilters).forEach(([key, value]) => {
+    if (value) payload[key] = value;
+  });
 
   const response = await postRequest('api/pos/getFacturas', payload);
-  return { invoices: response.data?.factura ?? [], meta: response.data?.data };
+  const paginator = response.data?.data;
+  const invoices = Array.isArray(paginator?.data) ? paginator.data : [];
+
+  return {
+    invoices,
+    meta: {
+      current_page: Number(paginator?.current_page ?? params.page),
+      last_page: Number(paginator?.last_page ?? params.page),
+      per_page: Number(paginator?.per_page ?? params.perPage),
+      total: Number(paginator?.total ?? invoices.length),
+      from: paginator?.from ?? null,
+      to: paginator?.to ?? null,
+    },
+  };
 }
 
 export async function getFacturaToCancelar(numeroFactura: string): Promise<{ factura?: PosInvoiceDetail; days?: number }> {
