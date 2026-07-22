@@ -18,6 +18,7 @@ import ProductListScreen from '@/screens/products/ProductListScreen';
 import CreateProductScreen from '@/screens/products/CreateProductScreen';
 import BusinessConfigurationScreen from '@/screens/business/BusinessConfigurationScreen';
 import PosScreen from '@/screens/pos/PosScreen';
+import UsersScreen from '@/screens/users/UsersScreen';
 //////////////// Screens ////////////////
 
 
@@ -68,6 +69,14 @@ const Home: React.FC = () => {
         component={CreateProductScreen}
         options={{
           drawerIcon: ({ color, size }) => <MaterialIcons name="add-box" size={size} color={color} />,
+        }}
+      />
+
+      <Drawer.Screen
+        name="Usuarios"
+        component={UsersScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <MaterialIcons name="manage-accounts" size={size} color={color} />,
         }}
       />
 
