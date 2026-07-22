@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { RouteProp, useRoute } from '@react-navigation/native';
@@ -34,7 +34,7 @@ const SafeAreaWrapper: React.FC<WrapperProps> = ({ useSafeArea = false, children
     _style = { flex: 1, marginTop: 10 }
   }
 
-  return <Container style={[{ defaultStyle: { flex: 1 } }, style, _style ]}>{children}</Container>;
+  return <Container style={[styles.flex, style, _style]}>{children}</Container>;
 };
 
 
@@ -43,52 +43,79 @@ type RouteParams = {
 };
 type ProductListRouteProp = RouteProp<{ params: RouteParams }, 'params'>;
 
+const PRODUCTS_PER_PAGE = 35;
+const MAX_ITEMS = 50;
+
 
 const ProductListScreen: React.FC = () => {
 
   const theme = useTheme();
   const route = useRoute<ProductListRouteProp>();
-  const { useSafeArea = false } = route.params;
+  const { useSafeArea = false } = route.params ?? {};
 
-  const MAX_ITEMS = 50;
   const [products, setProducts] = useState<Product[]>([]);
-  const [page, setPage] = useState(1);
+  const [nextPage, setNextPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState<boolean>(false);
-  const [hasMore, setHasMore] = useState<boolean>(true);
   const [showFormModal, setShowFormModal] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product>();
-  const [initialized, setInitialized] = useState(false);
   const [viewStyle, setViewStyle] = useState<'grid' | 'list'>('grid');
   const [searchText, setSearchText] = useState('');
-  const [filterField, setFilterField] = useState('description');
+  const searchGenerationRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (pageToLoad = 1, replace = pageToLoad === 1) => {
+    if (!replace && (loadingMoreRef.current || !hasMoreRef.current)) return;
 
-    if (loading || !hasMore) return;
+    const generation = replace ? ++searchGenerationRef.current : searchGenerationRef.current;
+    if (replace) {
+      hasMoreRef.current = true;
+      setProducts([]);
+      setTotalResults(0);
+      setNextPage(1);
+    } else {
+      loadingMoreRef.current = true;
+    }
 
     setLoading(true);
 
     try {
       const response = await postRequest('api/pos/searchProduct', {
-        "include_images"  : 1,
-        "per_page" : 35,
-        "page"     : page,
-        "q"        : searchText,
-        "field"    : filterField,
+        parametro: searchText.trim() || '%',
+        include_images: true,
+        per_page: PRODUCTS_PER_PAGE,
+        page: pageToLoad,
       });
 
-      const newProducts = response.data?.data?.data;
+      if (generation !== searchGenerationRef.current) return;
+
+      const paginator = response.data?.data;
+      const newProducts: Product[] = Array.isArray(paginator?.data) ? paginator.data : [];
+      const currentPage = Number(paginator?.current_page ?? pageToLoad);
+      const lastPage = Number(paginator?.last_page ?? currentPage);
+      const total = Number(paginator?.total ?? newProducts.length);
 
       setProducts((prevProducts) => {
-        const combined = [...prevProducts, ...newProducts];
+        if (replace) return newProducts.slice(0, MAX_ITEMS);
+
+        const existingIds = new Set(prevProducts.map((item) => item.id ?? item.reference));
+        const uniqueProducts = newProducts.filter((item) => !existingIds.has(item.id ?? item.reference));
+        const combined = [...prevProducts, ...uniqueProducts];
         return combined.length > MAX_ITEMS ? combined.slice(-MAX_ITEMS) : combined;
       });
 
-      setPage((prevPage) => prevPage + 1);
-      setHasMore(newProducts.length > 0);
+      setTotalResults(total);
+      setNextPage(currentPage + 1);
+      hasMoreRef.current = Number.isFinite(lastPage)
+        ? currentPage < lastPage
+        : newProducts.length === PRODUCTS_PER_PAGE;
 
     } catch (error) {
+      if (generation !== searchGenerationRef.current) return;
+
       if (isAxiosError(error)) {
         Toast.show({
           type: 'info',
@@ -103,9 +130,10 @@ const ProductListScreen: React.FC = () => {
         });
       }
     } finally {
-      setLoading(false);
+      if (!replace) loadingMoreRef.current = false;
+      if (generation === searchGenerationRef.current) setLoading(false);
     }
-  }, [loading, hasMore, page, searchText, filterField]); // Incluye searchText y filterField en las dependencias
+  }, [searchText]);
 
 
 
@@ -113,28 +141,22 @@ const ProductListScreen: React.FC = () => {
     setViewStyle((prevStyle) => (prevStyle === 'list' ? 'grid' : 'list'));
   };
 
-  const initialFetcProduct = () => {
-    setHasMore(true);
-    setPage(1);
-    setProducts([]);
-  }
-
   useEffect(() => {
-    fetchProducts();
-  }, [page]);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
-  useEffect(() => {
-    if (!initialized) {
-      setInitialized(true);
-      return; // No ejecutar el código en el primer render
-    }
+    searchDebounceRef.current = setTimeout(() => {
+      fetchProducts(1, true);
+    }, 450);
 
-    const delayDebounceFn = setTimeout(() => {
-      initialFetcProduct();
-    }, 1000); // Ajusta el tiempo en milisegundos según prefieras, por ejemplo 1000 ms = 1 segundo
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [fetchProducts]);
 
-    return () => clearTimeout(delayDebounceFn); // Limpia el timeout si el usuario sigue escribiendo
-  }, [searchText]);
+  const submitSearch = () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    fetchProducts(1, true);
+  };
 
 
   const handleEditProduct = (product: Product) => {
@@ -148,10 +170,12 @@ const ProductListScreen: React.FC = () => {
       <SearchBar
         searchText      = {searchText}
         setSearchText   = {setSearchText}
-        onSubmitEditing = {fetchProducts}
-        setFilterField  = {setFilterField}
+        onSubmitEditing = {submitSearch}
         toggleViewStyle = {toggleViewStyle}
         viewStyle       = {viewStyle}
+        loading         = {loading}
+        loadedCount     = {products.length}
+        totalResults    = {totalResults}
       />
 
       <View style={styles.container}>
@@ -161,10 +185,12 @@ const ProductListScreen: React.FC = () => {
           onPress={(product) => {
             handleEditProduct(product)
           }}
-          onEndReached={()=>{
-            fetchProducts();
-          }}
+          onEndReached={() => fetchProducts(nextPage, false)}
           loading={loading}
+          emptyTitle={searchText.trim() ? 'No encontramos productos' : 'No hay productos registrados'}
+          emptyDescription={searchText.trim()
+            ? 'Prueba con otra referencia, descripción o categoría.'
+            : 'Crea el primer producto usando el botón +.'}
         />
       </View>
 
@@ -175,7 +201,7 @@ const ProductListScreen: React.FC = () => {
       >
         {showFormModal && (
           <ProductForm product={selectedProduct} onCancel={() => setShowFormModal(false)} onSave={()=>{
-            initialFetcProduct()
+            fetchProducts(1, true)
             setShowFormModal(false)
           }} />
         )}
@@ -199,6 +225,9 @@ const ProductListScreen: React.FC = () => {
 
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   safeContainer: {
     flex: 1,
     paddingHorizontal: 10,

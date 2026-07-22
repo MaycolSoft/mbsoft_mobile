@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, TouchableOpacity, Text, Image } from 'react-native';
-import { CameraView, CameraPictureOptions } from 'expo-camera';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, View, TouchableOpacity, Text, Image } from 'react-native';
+import { CameraView, CameraPictureOptions, useCameraPermissions } from 'expo-camera';
 import Toast from 'react-native-toast-message';
 import Button from "@/components/Button"
 
@@ -12,36 +12,36 @@ interface CameraComponentProps {
 
 const CameraComponent: React.FC<CameraComponentProps> = ({ onClose, onDone }) => {
   const cameraRef = useRef<CameraView>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [capturedImages, setCapturedImages] = useState<string[]>([]); // Almacena las imágenes capturadas.
-  const [facing, setFacing] = useState<'back' | 'front'>('front'); // Controla la cámara frontal o trasera.
+  const [facing, setFacing] = useState<'back' | 'front'>('back'); // Controla la cámara frontal o trasera.
   const [takingPicture, setTakingPicture] = useState(false); // Estado para controlar si se está tomando una foto.
 
   const takePicture = async () => {
-    setTakingPicture(true)
-    if (cameraRef.current) {
-      try {
-        const options: CameraPictureOptions = { quality: 0.8, base64: false };
-        const result = await cameraRef.current.takePictureAsync(options); // Llamamos correctamente `takePicture`
-        
-        if(result){
-          setCapturedImages((prev) => [...prev, result.uri]);
-        }else{
-          Toast.show({
-            type: 'error',
-            text1: 'Error',
-            text2: "Error Tomando la foto",
-          });
-        }
-        
-      } catch (error) {
+    if (!cameraRef.current || takingPicture) return;
+
+    setTakingPicture(true);
+    try {
+      const options: CameraPictureOptions = { quality: 0.8, base64: false };
+      const result = await cameraRef.current.takePictureAsync(options);
+
+      if (result) {
+        setCapturedImages((prev) => [...prev, result.uri]);
+      } else {
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: "Error Tomando la foto",
+          text2: 'Error tomando la foto',
         });
-      }finally{
-        setTakingPicture(false)
       }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Error tomando la foto',
+      });
+    } finally {
+      setTakingPicture(false);
     }
   };
 
@@ -59,7 +59,35 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onClose, onDone }) =>
   const handleDeleteImage = (index: number) => {
     setCapturedImages((prev) => prev.filter((_, i) => i !== index));
   };
-  
+
+  if (!permission) {
+    return (
+      <View style={styles.permissionContainer}>
+        <ActivityIndicator color="#fff" />
+        <Button title="Cancelar" variant="light" onPress={onClose} />
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.permissionContainer}>
+        <Text style={styles.permissionText}>Necesitamos permiso para usar la cámara y fotografiar el producto.</Text>
+        <Button
+          title={permission.canAskAgain ? 'Permitir cámara' : 'Abrir configuración'}
+          icon="photo-camera"
+          onPress={() => {
+            if (permission.canAskAgain) {
+              requestPermission();
+            } else {
+              Linking.openSettings();
+            }
+          }}
+        />
+        <Button title="Cancelar" variant="light" onPress={onClose} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -79,6 +107,10 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onClose, onDone }) =>
           });
         }}
       />
+
+      <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <Text style={styles.closeButtonText}>Cerrar</Text>
+      </TouchableOpacity>
 
 
       <View
@@ -121,10 +153,10 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onClose, onDone }) =>
           <Button
             title="Tomar Foto"
             onPress={takePicture}
-            disabled={takingPicture}
+            loading={takingPicture}
           />
           <TouchableOpacity style={styles.button} onPress={handleDone}>
-            <Text style={styles.text}>Done</Text>
+            <Text style={styles.text}>Finalizar</Text>
           </TouchableOpacity>
         </View>
 
@@ -137,12 +169,39 @@ const CameraComponent: React.FC<CameraComponentProps> = ({ onClose, onDone }) =>
 export default CameraComponent;
 
 const styles = StyleSheet.create({
+  permissionContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  permissionText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: 'black',
   },
   camera: {
     flex: 4,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 52,
+    left: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   controls: {
     flexDirection: 'row',

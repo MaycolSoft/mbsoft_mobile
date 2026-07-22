@@ -37,6 +37,14 @@
           "recordAudioAndroid": true
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite a $(PRODUCT_NAME) acceder a tus fotos para agregarlas a productos.",
+          "cameraPermission": "Permite a $(PRODUCT_NAME) usar la cámara para fotografiar productos.",
+          "microphonePermission": false
+        }
+      ],
       "expo-web-browser"
     ],
     "extra": {

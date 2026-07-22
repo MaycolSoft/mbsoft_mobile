@@ -60,25 +60,40 @@ const useStore = create<StoreState>()(
 
 
 //////////////////// LOGS ////////////////////
-interface LogEntry {
+export type HttpLogStatus = 'pending' | 'success' | 'error';
+
+export interface HttpLogEntry {
+  id: string;
   method: string;
   url: string;
   data?: any;
   params?: any;
+  response?: any;
+  error?: any;
+  httpStatus?: number;
+  durationMs?: number;
+  status: HttpLogStatus;
   timestamp: Date;
 }
 
 interface LogStore {
-  logs: LogEntry[];
-  addLog: (log: LogEntry) => void;
+  logs: HttpLogEntry[];
+  addLog: (log: HttpLogEntry) => void;
+  updateLog: (id: string, changes: Partial<HttpLogEntry>) => void;
+  clearLogs: () => void;
 }
 
 const useLogStore = create<LogStore>((set) => ({
   logs: [],
   addLog: (log) =>
     set((state) => ({
-      logs: [log, ...state.logs], // Inserta el nuevo log al principio
+      logs: [log, ...state.logs].slice(0, 200),
     })),
+  updateLog: (id, changes) =>
+    set((state) => ({
+      logs: state.logs.map((log) => (log.id === id ? { ...log, ...changes } : log)),
+    })),
+  clearLogs: () => set({ logs: [] }),
 }));
 //////////////////// LOGS ////////////////////
 

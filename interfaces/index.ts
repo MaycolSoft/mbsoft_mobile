@@ -3,7 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 type MaterialIconsName = keyof typeof MaterialIcons.glyphMap;
 
 
-interface ProductImage {
+export interface ProductImage {
   id: number|null;
   id_empresa: number;
   id_producto: number|null;
@@ -87,4 +87,6 @@ export interface ProductOverlayProps {
   onPress?: (product: Product) => void;
   onEndReached?: () => void; // When the list is coming to end, while user scrolling
   loading?:boolean; // for show loading component when loading
+  emptyTitle?: string;
+  emptyDescription?: string;
 }

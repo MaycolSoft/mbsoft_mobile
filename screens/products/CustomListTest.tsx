@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { Product, ProductOverlayProps } from '@/interfaces';
 import Carousel from '@/components/Carousel';
@@ -149,6 +150,8 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
   numColumns = 2,
   viewStyle = 'grid',
   onEndReached = () => {},
+  emptyTitle = 'No hay productos',
+  emptyDescription = 'Los productos aparecerán aquí.',
 }) => {
   const theme = useTheme();
   const screenWidth = Dimensions.get('window').width;
@@ -180,11 +183,26 @@ const ProductOverlay: React.FC<ProductOverlayProps> = ({
       numColumns={viewStyle === 'list' ? 1 : numColumns}
       contentContainerStyle={styles.list}
       onEndReached={onEndReached}
-      onEndReachedThreshold={1}
+      onEndReachedThreshold={0.35}
       initialNumToRender={8}
       maxToRenderPerBatch={8}
       windowSize={7}
       removeClippedSubviews
+      ListEmptyComponent={
+        loading ? null : (
+          <View style={styles.emptyState}>
+            <View style={[styles.emptyIcon, { backgroundColor: theme.colors.surface, borderRadius: theme.radius.full }]}>
+              <MaterialIcons name="inventory-2" size={34} color={theme.colors.textMuted} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: theme.colors.text, fontSize: theme.typography.fontSize.lg }]}>
+              {emptyTitle}
+            </Text>
+            <Text style={[styles.emptyDescription, { color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm }]}>
+              {emptyDescription}
+            </Text>
+          </View>
+        )
+      }
       ListFooterComponent={loading ? <ActivityIndicator size="large" color={theme.colors.primary} style={{ margin: 16 }} /> : null}
     />
   );
@@ -233,6 +251,29 @@ const styles = StyleSheet.create({
   listInfo: {
     flex: 1,
     marginLeft: 12,
+  },
+  emptyState: {
+    flex: 1,
+    minHeight: 360,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  emptyTitle: {
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  emptyDescription: {
+    textAlign: 'center',
+    lineHeight: 20,
   },
   textWrapper: {
     overflow: 'hidden',

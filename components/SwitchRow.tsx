@@ -5,12 +5,13 @@ import { useTheme } from '@/theme/ThemeProvider';
 
 interface SwitchRowProps {
   label: string;
+  description?: string;
   value: boolean;
   onChange: (value: boolean) => void;
   iconName?: keyof typeof MaterialIcons.glyphMap;
 }
 
-const SwitchRow = ({ label, value, onChange, iconName }: SwitchRowProps) => {
+const SwitchRow = ({ label, description, value, onChange, iconName }: SwitchRowProps) => {
   const theme = useTheme();
 
   return (
@@ -21,7 +22,14 @@ const SwitchRow = ({ label, value, onChange, iconName }: SwitchRowProps) => {
       ]}
     >
       {iconName && <MaterialIcons name={iconName} size={20} color={theme.colors.textMuted} style={{ marginRight: 10 }} />}
-      <Text style={{ color: theme.colors.text, flex: 1, fontSize: theme.typography.fontSize.md }}>{label}</Text>
+      <View style={styles.copy}>
+        <Text style={{ color: theme.colors.text, fontSize: theme.typography.fontSize.md }}>{label}</Text>
+        {description && (
+          <Text style={{ color: theme.colors.textMuted, fontSize: theme.typography.fontSize.xs, marginTop: 2 }}>
+            {description}
+          </Text>
+        )}
+      </View>
       <Switch
         value={value}
         onValueChange={onChange}
@@ -33,6 +41,10 @@ const SwitchRow = ({ label, value, onChange, iconName }: SwitchRowProps) => {
 };
 
 const styles = StyleSheet.create({
+  copy: {
+    flex: 1,
+    marginRight: 10,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

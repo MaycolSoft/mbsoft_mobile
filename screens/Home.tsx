@@ -15,7 +15,7 @@ import Settings    from '@/screens/Settings';
 import LogScreen   from '@/components/LogScreen';
 import Iframe      from '@/components/Iframe';
 import ProductListScreen from '@/screens/products/ProductListScreen';
-import ProductForm from '@/screens/products/ProductForm';
+import CreateProductScreen from '@/screens/products/CreateProductScreen';
 import BusinessConfigurationScreen from '@/screens/business/BusinessConfigurationScreen';
 //////////////// Screens ////////////////
 
@@ -56,7 +56,7 @@ const Home: React.FC = () => {
 
       <Drawer.Screen
         name="Crear Producto"
-        component={ProductForm}
+        component={CreateProductScreen}
         options={{
           drawerIcon: ({ color, size }) => <MaterialIcons name="add-box" size={size} color={color} />,
         }}

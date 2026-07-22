@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import * as FileSystem from 'expo-file-system';
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, Linking, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { postRequest, getRequest, deleteRequest, isAxiosError } from '@/api/apiService';
 import { showAlert } from '@/components/AppAlert';
@@ -14,12 +13,66 @@ import Button         from '@/components/Button';
 import Camera         from '@/components/Camera';
 import TextInput      from '@/components/TextInput';
 import SwitchRow      from '@/components/SwitchRow';
-import { Product, ProductFormInterface, CategoriaUnidadesTax } from '@/interfaces';
+import { Product, ProductImage, ProductFormInterface, CategoriaUnidadesTax } from '@/interfaces';
 
 
-interface ImageManagementInterface {
-  [key: string]: any;
+interface PendingProductImage {
+  uri: string;
+  name: string;
+  mimeType: string;
+  file?: any;
 }
+
+type ImageSaveLocation = 'local' | 'db';
+
+const getImageExtension = (uri: string, fileName?: string | null) => {
+  const source = fileName || uri.split('?')[0];
+  const extension = source.split('.').pop()?.toLowerCase();
+  return extension && /^[a-z0-9]+$/.test(extension) ? extension : 'jpg';
+};
+
+const toPendingImage = (
+  uri: string,
+  fileName?: string | null,
+  mimeType?: string | null,
+  file?: any,
+): PendingProductImage => {
+  const extension = getImageExtension(uri, fileName);
+  const normalizedMimeExtension = extension === 'jpg' ? 'jpeg' : extension;
+
+  return {
+    uri,
+    name: fileName || `producto-${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`,
+    mimeType: mimeType || `image/${normalizedMimeExtension}`,
+    file,
+  };
+};
+
+const getProductImageUri = (image: ProductImage) => {
+  if (image.image_url) return image.image_url;
+  if (!image.image) return '';
+
+  const extension = image.extension === 'jpg' ? 'jpeg' : image.extension || 'jpeg';
+  return `data:image/${extension};base64,${image.image}`;
+};
+
+const getSavedProductId = (responseData: any, fallbackId?: number) => {
+  if (fallbackId) return fallbackId;
+
+  const payload = responseData?.data ?? responseData;
+  const candidates = [
+    payload,
+    payload?.id,
+    payload?.id_product,
+    payload?.product_id,
+    payload?.product?.id,
+    responseData?.id,
+    responseData?.id_product,
+  ];
+
+  const id = candidates.find((candidate) => Number.isFinite(Number(candidate)) && Number(candidate) > 0);
+  return id === undefined ? undefined : Number(id);
+};
 
 const SectionTitle = ({ icon, children }: { icon: keyof typeof MaterialIcons.glyphMap; children: string }) => {
   const theme = useTheme();
@@ -53,8 +106,10 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<any>({});
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [imageManagment, setImageManagment] = useState<ImageManagementInterface[]>([]);
-  const [imageManagmentRemoved, setImageManagmentRemoved] = useState<ImageManagementInterface[]>([]);
+  const [pendingImages, setPendingImages] = useState<PendingProductImage[]>([]);
+  const [existingImages, setExistingImages] = useState<ProductImage[]>(product?.images ?? []);
+  const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
+  const [imageSaveLocation, setImageSaveLocation] = useState<ImageSaveLocation>('local');
 
   const [modalPreviewImageVisible, setModalPreviewImageVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -120,8 +175,19 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
         "status"     : `${formData.status}`,
       }
 
-      await postRequest('api/productos/updateOrCreateProduct', productForm);
-      await handleSendImages();
+      const response = await postRequest('api/productos/updateOrCreateProduct', productForm);
+      const productId = getSavedProductId(response.data, formData.id);
+
+      if (pendingImages.length > 0 && !productId) {
+        throw new CustomException({
+          code: '05',
+          message: 'El producto se guardó, pero el servidor no devolvió su ID para asociar las imágenes.',
+        });
+      }
+
+      if (productId) {
+        await handleSendImages(productId);
+      }
       await handleRemoveImages();
 
       onSave();
@@ -147,7 +213,7 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
         Toast.show({
           type: 'error',
           text1: 'Error',
-          text2: 'Ha ocurrido un error al cargar los productos',
+          text2: 'Ha ocurrido un error al guardar el producto',
         });
       }
     }finally{
@@ -155,83 +221,71 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
     }
   };
 
-  const handleSendImages = async () => {
+  const handleSendImages = async (productId: number) => {
+    if (pendingImages.length === 0) return;
 
-    if(imageManagment.length == 0 && product?.id){
-      return
-    }
+    const imagesFormData = new FormData();
 
-    const formData = new FormData();
-
-    for (const [index, image] of imageManagment.entries()) {
-      try {
-        const base64Data = await FileSystem.readAsStringAsync(image.image_url, {
-          encoding: (FileSystem as any).EncodingType.Base64,
-        });
-
-        const fileName = image.image_url.split('/').pop();
-        const fileType = fileName?.split('.').pop() || 'jpeg';
-
-        formData.append(`file[${index}]`, {
-          uri: `data:image/${fileType};base64,${base64Data}`,
-          name: fileName,
-          type: `image/${fileType}`,
+    for (const image of pendingImages) {
+      if (Platform.OS === 'web') {
+        const file = image.file ?? await fetch(image.uri).then((response) => response.blob());
+        imagesFormData.append('file[]', file, image.name);
+      } else {
+        imagesFormData.append('file[]', {
+          uri: image.uri,
+          name: image.name,
+          type: image.mimeType,
         } as any);
-      } catch (error) {
-        console.error(`Error al procesar la imagen ${index}:`, error);
       }
     }
 
-    formData.append('save_location', 'db');
+    imagesFormData.append('save_location', imageSaveLocation);
 
     try {
-      await postRequest('api/productos/saveImages/'+product?.id, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      Toast.show({
-        type: 'success',
-        text1: 'Éxito',
-        text2: 'Imágenes enviadas correctamente.',
-      });
+      await postRequest(`api/productos/saveImages/${productId}`, imagesFormData);
     } catch (error: any) {
-      throw new CustomException({ code: "04", message: 'Imagenes: ' + error.message });
+      const message = isAxiosError(error)
+        ? error.response?.data.message || error.message
+        : error?.message;
+      throw new CustomException({ code: '04', message: `Imágenes: ${message || 'no se pudieron guardar'}` });
     }
   };
 
   const handleRemoveImages = async () => {
-    if(imageManagmentRemoved.length == 0){
-      return
+    if (removedImageIds.length === 0) return;
+
+    try {
+      await Promise.all(
+        removedImageIds.map((imageId) => deleteRequest(`api/productos/deleteImage/${imageId}`)),
+      );
+    } catch (error: any) {
+      const message = isAxiosError(error)
+        ? error.response?.data.message || error.message
+        : error?.message;
+      throw new CustomException({ code: '06', message: `Imágenes: ${message || 'no se pudieron eliminar'}` });
     }
+  };
 
-    try{
-      imageManagmentRemoved.forEach(async (image) => {
-        await deleteRequest('api/productos/deleteImage/'+image.id);
-      });
+  const getProductImages = async (productId: number) => {
+    try {
+      const response = await getRequest(`api/productos/getImages/${productId}`);
+      const images = response.data?.data;
 
-      Toast.show({
-        type: 'success',
-        text1: 'Éxito',
-        text2: 'Imágenes eliminadas correctamente.',
-      });
-    }catch(error){
-      if(isAxiosError(error)){
-        Toast.show({
-          type: 'error',
-          text1: 'Warning',
-          text2: error.response?.data.message || 'Error en la respuesta del servidor',
-        })
-        return;
+      if (Array.isArray(images)) {
+        setExistingImages(images);
       }
-
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Error eliminando imágenes.',
-      });
+    } catch (error) {
+      if (!product?.images?.length) {
+        Toast.show({
+          type: 'info',
+          text1: 'Imágenes',
+          text2: isAxiosError(error)
+            ? error.response?.data.message || 'No se pudieron consultar las imágenes.'
+            : 'No se pudieron consultar las imágenes.',
+        });
+      }
     }
-
-  }
+  };
 
   const getCategoriaUnidadesTax = async () => {
     try {
@@ -271,7 +325,15 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
   useEffect(()=>{
     getCategoriaUnidadesTax();
     fillFieldUpdateProductMode();
-  },[])
+
+    setPendingImages([]);
+    setRemovedImageIds([]);
+    setExistingImages(product?.images ?? []);
+
+    if (product?.id) {
+      getProductImages(product.id);
+    }
+  }, [product?.id])
 
   const [scrollViewKey, setScrollViewKey] = useState(0);
 
@@ -309,10 +371,12 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
       });
 
       if (!result.canceled) {
-        setImageManagment((prev) => {
-          const newImageManagment = [...prev, ...result.assets.map((asset) => ({ image_url: asset.uri }))];
+        setPendingImages((prev) => {
+          const newImages = result.assets.map((asset) =>
+            toPendingImage(asset.uri, asset.fileName, asset.mimeType, asset.file),
+          );
           setScrollViewKey((prevKey) => prevKey + 1);
-          return newImageManagment;
+          return [...prev, ...newImages];
         });
       }
     } catch (error) {
@@ -324,20 +388,12 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
     }
   };
 
-  const toggleRemoveExistingImage = (index: number, value: any) => {
-    setImageManagmentRemoved((prev) => [...prev, { id: value.id }]);
+  const toggleRemoveExistingImage = (imageId: number) => {
+    const isMarkedForDeletion = removedImageIds.includes(imageId);
 
-    if (product?.images) {
-      if (product.images[index].deleted_at) {
-        product.images[index].deleted_at = null;
-        const indexToRemove = imageManagmentRemoved.findIndex((item) => item.id == value.id);
-        if (indexToRemove !== -1) {
-          setImageManagmentRemoved((prev) => prev.filter((_, i) => i !== indexToRemove));
-        }
-      } else {
-        product.images[index].deleted_at = new Date().toISOString();
-      }
-    }
+    setRemovedImageIds((prev) =>
+      isMarkedForDeletion ? prev.filter((id) => id !== imageId) : [...prev, imageId],
+    );
   };
 
   return (
@@ -444,72 +500,93 @@ const ProductForm = ({ product, onCancel=()=>{}, onSave=()=>{} }: ProductFormInt
         onChange={(value) => handleChange('status', value)}
       />
 
-      {product && (
-        <>
-          <SectionTitle icon="photo-camera">Imágenes</SectionTitle>
+      <SectionTitle icon="photo-camera">Imágenes</SectionTitle>
 
-          {isCameraOpen ? (
-            <Modal visible={isCameraOpen} animationType="slide" presentationStyle="fullScreen">
-              <Camera
-                onClose={() => setIsCameraOpen(false)}
-                onDone={(images)=>{
-                  setImageManagment((prev) => [...prev, ...images.map((uri) => ({ image_url: uri }))]);
-                }}
-              />
-            </Modal>
-          ) : (
-            <View style={styles.imageActionsRow}>
-              <Button title="Abrir cámara" icon="photo-camera" variant="light" onPress={() => setIsCameraOpen(true)} style={{ flex: 1 }} />
-              <Button title="Elegir imágenes" icon="photo-library" variant="light" onPress={pickFromGallery} style={{ flex: 1 }} />
-            </View>
-          )}
+      <SwitchRow
+        label="Guardar imágenes en la base de datos"
+        description={imageSaveLocation === 'db'
+          ? 'Modo DB: almacena el contenido de la imagen en base64.'
+          : 'Modo local: guarda el archivo en storage y utiliza image_url.'}
+        iconName={imageSaveLocation === 'db' ? 'dns' : 'folder'}
+        value={imageSaveLocation === 'db'}
+        onChange={(enabled) => setImageSaveLocation(enabled ? 'db' : 'local')}
+      />
 
-          <ScrollView
-            key={scrollViewKey}
-            style={styles.productImageScrollContainer}
-            contentContainerStyle={styles.productImagePreviewList}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            {product?.images && product.images.map((value, index) => {
-              const markedForDeletion = !!product.images?.[index]?.deleted_at;
-              return (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => openImageModal(value.image_url ? value.image_url : `data:image/jpeg;base64,${value.image}`)}
-                >
-                  <View style={[styles.imageThumb, { borderRadius: theme.radius.md, borderColor: theme.colors.border }]}>
-                    <Image
-                      source={{ uri: value.image_url ? value.image_url : `data:image/jpeg;base64,${value.image}` }}
-                      style={[styles.productImagePreviewImage, { borderRadius: theme.radius.md }]}
-                    />
-                    {markedForDeletion && (
-                      <View style={[styles.deletedOverlay, { backgroundColor: `${theme.colors.danger}66`, borderRadius: theme.radius.md }]} />
-                    )}
+      {isCameraOpen ? (
+        <Modal visible={isCameraOpen} animationType="slide" presentationStyle="fullScreen">
+          <Camera
+            onClose={() => setIsCameraOpen(false)}
+            onDone={(images) => {
+              setPendingImages((prev) => [...prev, ...images.map((uri) => toPendingImage(uri))]);
+              setScrollViewKey((prevKey) => prevKey + 1);
+            }}
+          />
+        </Modal>
+      ) : (
+        <View style={styles.imageActionsRow}>
+          <Button title="Abrir cámara" icon="photo-camera" variant="light" onPress={() => setIsCameraOpen(true)} style={{ flex: 1 }} />
+          <Button title="Elegir imágenes" icon="photo-library" variant="light" onPress={pickFromGallery} style={{ flex: 1 }} />
+        </View>
+      )}
+
+      {(existingImages.length > 0 || pendingImages.length > 0) ? (
+        <ScrollView
+          key={scrollViewKey}
+          style={styles.productImageScrollContainer}
+          contentContainerStyle={styles.productImagePreviewList}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {existingImages.map((value, index) => {
+            const hasImageId = typeof value.id === 'number';
+            const markedForDeletion = hasImageId && removedImageIds.includes(value.id as number);
+            const imageUri = getProductImageUri(value);
+
+            return (
+              <TouchableOpacity
+                key={value.id ?? `existing-${index}`}
+                onPress={() => openImageModal(imageUri)}
+              >
+                <View style={[styles.imageThumb, { borderRadius: theme.radius.md, borderColor: theme.colors.border }]}>
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={[styles.productImagePreviewImage, { borderRadius: theme.radius.md }]}
+                  />
+                  {markedForDeletion && (
+                    <View style={[styles.deletedOverlay, { backgroundColor: `${theme.colors.danger}66`, borderRadius: theme.radius.md }]} />
+                  )}
+                  {hasImageId && (
                     <TouchableOpacity
                       style={[styles.imageActionButton, { backgroundColor: markedForDeletion ? theme.colors.success : theme.colors.danger }]}
-                      onPress={() => toggleRemoveExistingImage(index, value)}
+                      onPress={() => toggleRemoveExistingImage(value.id as number)}
                     >
                       <MaterialIcons name={markedForDeletion ? 'undo' : 'close'} size={14} color="#fff" />
                     </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
 
-            {imageManagment.map((value, index) => (
-              <View key={`imageManagment-${index}`} style={[styles.imageThumb, { borderRadius: theme.radius.md, borderColor: theme.colors.success }]}>
-                <Image source={{ uri: value?.image_url }} style={[styles.productImagePreviewImage, { borderRadius: theme.radius.md }]} />
+          {pendingImages.map((value, index) => (
+            <TouchableOpacity
+              key={`${value.uri}-${index}`}
+              onPress={() => openImageModal(value.uri)}
+            >
+              <View style={[styles.imageThumb, { borderRadius: theme.radius.md, borderColor: theme.colors.success }] }>
+                <Image source={{ uri: value.uri }} style={[styles.productImagePreviewImage, { borderRadius: theme.radius.md }]} />
                 <TouchableOpacity
                   style={[styles.imageActionButton, { backgroundColor: theme.colors.danger }]}
-                  onPress={() => setImageManagment((prev) => prev.filter((_, i) => i !== index))}
+                  onPress={() => setPendingImages((prev) => prev.filter((_, i) => i !== index))}
                 >
                   <MaterialIcons name="close" size={14} color="#fff" />
                 </TouchableOpacity>
               </View>
-            ))}
-          </ScrollView>
-        </>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : (
+        <Text style={[styles.emptyImagesText, { color: theme.colors.textMuted }]}>Aún no has agregado imágenes.</Text>
       )}
 
       <Modal visible={modalPreviewImageVisible} transparent animationType="fade" onRequestClose={closeImageModal}>
@@ -557,6 +634,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 5,
     gap: 8,
+  },
+  emptyImagesText: {
+    marginBottom: 8,
+    fontSize: 14,
   },
   productImagePreviewImage: {
     width: 84,
