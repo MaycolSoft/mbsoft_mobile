@@ -12,12 +12,12 @@ import { showAlert } from '@/components/AppAlert';
 
 const DrawerContent = (props: DrawerContentComponentProps) => {
   const theme = useTheme();
-  const setAccessToken = useStore((state) => state.setAccessToken);
+  const logout = useStore((state) => state.logout);
 
   const handleLogout = () => {
     showAlert('Cerrar sesión', '¿Seguro que querés salir?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: () => setAccessToken(null) },
+      { text: 'Salir', style: 'destructive', onPress: () => logout() },
     ]);
   };
 

@@ -32,6 +32,7 @@ const LoginScreen = () => {
   const [showServerConfig, setShowServerConfig] = useState(false);
 
   const setAccessToken = useStore((state) => state.setAccessToken);
+  const setCurrentUser = useStore((state) => state.setCurrentUser);
   const apiUrl = useStore((state) => state.config.apiUrl);
   const updateConfig = useStore((state) => state.updateConfig);
   const [serverUrl, setServerUrl] = useState(apiUrl || DEFAULT_BASE_URL);
@@ -106,6 +107,7 @@ const LoginScreen = () => {
       });
 
       setAccessToken(response.data.data.token);
+      setCurrentUser(response.data.data.user ?? null);
 
       if (remember) {
         await saveCredentials();

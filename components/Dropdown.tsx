@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Modal, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Modal, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Button from '@/components/Button';
 import { DropdownProps, Options } from '@/interfaces';
@@ -19,10 +19,17 @@ const Dropdown: React.FC<DropdownProps> = ({
   const [visible, setVisible] = useState<boolean>(false);
   const [selectedOption, setSelectedOption] = useState<Options | null>(null);
   const dropdownRef = useRef<View>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number }>({
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  }>({
     top: 0,
     left: 0,
     width: 200,
+    maxHeight: 260,
   });
 
   const handleSelect = (option: Options) => {
@@ -35,13 +42,22 @@ const Dropdown: React.FC<DropdownProps> = ({
     if (dropdownRef.current) {
       dropdownRef.current.measure((fx, fy, width, height, px, py) => {
         const screenWidth = Dimensions.get('window').width;
+        const screenHeight = Dimensions.get('window').height;
         const dropdownWidth = Math.max(width, 200);
         const isTooFarRight = px + dropdownWidth > screenWidth;
 
+        const margin = 12;
+        const spaceBelow = screenHeight - (py + height) - margin;
+        const spaceAbove = py - margin;
+        const desiredHeight = Math.min(options.length * 44 + 8, 260);
+        const openUpward = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
+
         setDropdownPosition({
-          top: py + height,
+          top: openUpward ? undefined : py + height,
+          bottom: openUpward ? screenHeight - py : undefined,
           left: isTooFarRight ? screenWidth - dropdownWidth - 10 : px,
           width: dropdownWidth,
+          maxHeight: Math.max(120, Math.min(desiredHeight, openUpward ? spaceAbove : spaceBelow)),
         });
 
         setVisible(true);
@@ -102,23 +118,27 @@ const Dropdown: React.FC<DropdownProps> = ({
                 styles.dropdown,
                 {
                   top: dropdownPosition.top,
+                  bottom: dropdownPosition.bottom,
                   left: dropdownPosition.left,
                   width: dropdownPosition.width,
+                  maxHeight: dropdownPosition.maxHeight,
                   backgroundColor: theme.colors.card,
                   borderRadius: theme.radius.md,
                   ...theme.shadow,
                 },
               ]}
             >
-              {options.map((option, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleSelect(option)}
-                  style={[styles.option, { borderBottomColor: theme.colors.border }]}
-                >
-                  <Text style={{ color: theme.colors.text }}>{option.label}</Text>
-                </TouchableOpacity>
-              ))}
+              <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
+                {options.map((option, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => handleSelect(option)}
+                    style={[styles.option, { borderBottomColor: theme.colors.border }]}
+                  >
+                    <Text style={{ color: theme.colors.text }}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           </View>
         </TouchableWithoutFeedback>

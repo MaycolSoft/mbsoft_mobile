@@ -44,7 +44,9 @@ This project was previously abandoned after an Expo SDK bump broke it (see "Hist
 - `InputField.tsx` — an older, not-yet-themed plain text input, still used by `ProductForm.tsx`/`ProductListScreen.tsx`'s remaining spots that haven't been migrated to `TextInput.tsx` yet. Check which one a given screen already uses before adding new fields.
 - `react-native-paper` is still used directly (not through a shared wrapper) in `ProductForm.tsx` and `CategoryModal.tsx` for their own `Modal`/`Portal`/`Provider` — each of those wraps itself in its own local `<Provider>`, so they're self-contained and don't depend on any ancestor screen providing one.
 
-**Business configuration** ([screens/business/](screens/business/)): a "Config. Negocio" drawer entry hosting 4 tabs via `components/Tabs.tsx`, ported from a companion web frontend (`REACT-MBSOFT`, separate repo) — general business info + logo upload, NCF (fiscal receipt series) management with a series sub-editor in a `Modal`, database backups (create/list/delete — no download on mobile, by design), and a scheduled-tasks/cron builder. All endpoints assume the same `api/` prefix convention as the rest of the app; flagged in the screens themselves as an assumption to verify against the real backend if anything 404s.
+**Business configuration** ([screens/business/](screens/business/)): a "Config. Negocio" drawer entry hosting 5 tabs via `components/Tabs.tsx` — general business info + logo upload, **branches** (`BranchesTab.tsx` — per-branch settings sourced directly from Laravel controller code the user pasted in, not the web frontend, since the web doesn't have this screen either: POS search mode, invoice-return day limit, `allow_remove_product_pos` — the same flag `screens/pos/PosScreen.tsx` reads to decide whether removing/decrementing a cart line needs supervisor credentials — 10%-law/ITBIS-control/digital-invoice toggles, per-document footer text, and document number prefixes for factura/nota de crédito/entrada de productos/facturas suspendidas via `POST api/branch/updateOrCreateBranch`), NCF (fiscal receipt series) management with a series sub-editor in a `Modal`, database backups (create/list/delete — no download on mobile, by design), and a scheduled-tasks/cron builder. General/NCF/Backups/Tasks were ported from a companion web frontend (`REACT-MBSOFT`, separate repo); Branches has no web equivalent to compare against. All endpoints assume the same `api/` prefix convention as the rest of the app; flagged in the screens themselves as an assumption to verify against the real backend if anything 404s.
+
+`modo_busqueda_products_facturacion` is a per-branch enum (`'tabla' | 'cartas'`, Laravel validation `nullable|in:tabla,cartas`), edited via a 2-option segmented toggle in `BranchesTab.tsx`, and read by `screens/pos/PosScreen.tsx` off the branch object returned by `getGeneralConfiguration` to pick between two POS product-finding UIs: `'tabla'` (default) is the existing search-field + tap-a-result flow; `'cartas'` shows a "Explorar/Carrito" segmented toggle whose "Explorar" tab renders `screens/pos/components/CategoryBrowser.tsx` — tap a category (`GET api/pos/getCategorias`) to see its products as cards (`GET api/pos/getProductsByIdCategory/{id}`), tap a product card to add it straight to the cart. This is purely a frontend presentation choice per the Laravel source (the backend just returns raw products either way) — ported from a description of the legacy Blade view's card mode the user gave directly, not from `REACT-MBSOFT` (the current web POS doesn't have a card-browse mode either).
 
 **Path alias**: `@/*` maps to the repo root (`tsconfig.json`), e.g. `@/store/useStore`, `@/theme/ThemeProvider`.
 
@@ -208,42 +210,87 @@ Native UX direction:
 
 #### Phase 0 — contract and session foundation
 
-- [ ] Add typed `currentUser` and `posSessionToken` state.
-- [ ] On login, retain the API's `user` and derive a stable POS token compatible
-  with the web behavior; clear both at logout.
-- [ ] Create POS types and a `posApi.ts` adapter that normalizes API envelopes and
-  legacy response shapes.
+- [x] Add typed `currentUser` state (`store/useStore.ts`) — `posSessionToken` is
+  deliberately **not** stored separately; it's derived on-demand via
+  `getPosSessionToken(user)` in `screens/pos/types.ts` (same `btoa("id_empresa-id")`
+  the web uses, reimplemented by hand since Hermes/RN has no global `btoa`).
+- [x] On login, retain the API's `user` (`screens/Login.tsx` calls `setCurrentUser`
+  right after `setAccessToken`) and clear both at logout (`store/useStore.ts`'s new
+  `logout()` action, wired into `components/DrawerContent.tsx`).
+- [x] Create POS types (`screens/pos/types.ts`) and a `posApi.ts` adapter
+  (`screens/pos/api/posApi.ts`) — currently wraps just the three Phase-0 startup
+  calls (`getGeneralConfiguration`, `getNCFs`, `getProductsSession`); response
+  shapes are unconfirmed placeholders, see below.
 - [ ] Probe the startup/cart/search endpoints against the configured Laravel server
-  and record representative response shapes without logging secrets.
+  and record representative response shapes without logging secrets. **Needs the
+  user** — log in, check "Http Log" for the `api/login` response body and confirm
+  `user.id`/`user.id_empresa` exist; the three `posApi.ts` calls themselves aren't
+  wired to any UI yet (no POS screen exists), so exercising them needs either
+  Phase 1's screen or a manual test.
 - [ ] Confirm the `venta_decimal` meaning and branch-validation error code 35000002.
 
-Acceptance: the app can identify a POS session and load its cash drawer/cart without
-rendering a POS UI yet.
+Acceptance: the app can identify a POS session (done — `currentUser` populates on
+login, `getPosSessionToken()` derives the token) — loading the cash drawer/cart via
+`posApi.getProductsSession` is written but unverified against the real backend.
 
 #### Phase 1 — sellable mobile MVP
 
-- [ ] Add a themed `Facturación` drawer route and responsive `PosScreen` shell.
-- [ ] Load general configuration, NCFs, cash drawer and server cart on focus.
-- [ ] Implement text/reference search, exact barcode match and `quantity*code`.
-- [ ] Implement add/remove line, selected quantity display, totals and refresh.
-- [ ] Implement opening cash drawer; the sale UI must explain and block checkout if
-  no drawer is open.
-- [ ] Implement customer selection and consumer-final fallback.
-- [ ] Implement NCF selection and enforce `require_rnc` before invoice submission.
-- [ ] Implement multi-method payment, remaining amount/vuelto and invoice creation.
-- [ ] Open `url_reporte`, clear transient checkout state and refetch the server cart.
+- [x] Add a themed `Facturación` drawer route (`screens/Home.tsx`) and a phone-first
+  `PosScreen` shell (`screens/pos/PosScreen.tsx`) — touch-first redesign, not a port
+  of the web's keyboard-driven layout (no F-keys/arrow-nav; search field + tap-to-add
+  results, `FlatList` cart rows with a trash icon, sticky bottom bar with
+  client/NCF pickers + total + Cobrar button).
+- [x] Load general configuration, NCFs, cash drawer and server cart on focus
+  (`useFocusEffect`, see `loadStartupData` in `PosScreen.tsx`), including the
+  `35000002` branch-validation block (`showAlert`).
+- [x] Implement text/reference search, exact match and `quantity*code`
+  (`hooks/useProductSearch.ts` + `parseScanInput` in `types.ts`, ported from the
+  web's `useProductSearch.js`).
+- [x] Implement add/remove line and totals/refresh (`hooks/usePosCart.ts`, ported
+  from `usePosCart.js`). **No quantity decrement/stepper** — the backend only
+  supports additive `addProduct` and whole-line `removeProduct`, same as web.
+- [x] Implement opening cash drawer (`modals/OpenCashModal.tsx`); checkout is
+  disabled with an explanatory label on the Cobrar button when `cajaOpen !== true`.
+- [x] Implement customer selection and consumer-final fallback
+  (`modals/CustomerModal.tsx`).
+- [x] Implement NCF selection (themed `Dropdown`) and enforce `require_rnc` both
+  before opening the payment modal and again inside `createInvoice` (defense in
+  depth, matching web).
+- [x] Implement multi-method payment, remaining/vuelto and invoice creation
+  (`modals/PaymentModal.tsx` + `createInvoice` in `PosScreen.tsx`).
+- [x] Open `url_reporte` (via `expo-web-browser`), clear transient checkout state
+  and refetch the server cart on success.
+- [x] Removing a cart line when `allow_remove_product_pos` is falsy prompts for
+  supervisor credentials (`modals/RemoveProductModal.tsx`) — same gate as web.
 
-Acceptance: a cashier can open a drawer, find/scan products, charge and create a
-valid invoice from iPhone/Android in both light and dark modes.
+Acceptance: code-complete, **not yet verified against the real backend** — no
+network/creds available from this environment. Several response shapes
+(`getProductsSession`, `searchProduct`, `getCustomers`, `storeInvoice`) are still
+assumptions ported from the web JS, not confirmed against the live Laravel API.
+First real test: `npx expo start` → "Facturación" → search a product → open caja if
+prompted → add to cart → pick customer/NCF → pay → confirm the invoice report opens.
+Whatever breaks first tells us which shape assumption was wrong.
 
 #### Phase 2 — cash and operational parity
 
-- [ ] Add reconciliation preview and close-cash flow with supervisor credentials.
-- [ ] Add suspend-current-sale and list/resume suspended sales.
-- [ ] Restore focus/search cleanly after every modal and failed/successful mutation.
-- [ ] Add pull-to-refresh/retry behavior for network interruptions.
+- [x] Add reconciliation preview and close-cash flow with supervisor credentials
+  (`modals/CloseCashModal.tsx` — tap the "Caja abierta" banner; shows the
+  `getFacturasCuadre` preview, then posts `realizarCuadre` with supervisor
+  user/pass + counted amount).
+- [x] Add suspend-current-sale and list/resume suspended sales
+  (`handleSuspendInvoice` in `PosScreen.tsx` + `modals/SuspendedInvoicesModal.tsx`,
+  two small action buttons under the caja banner: "Suspender" — disabled when
+  the cart is empty — and "Suspendidas").
+- [ ] Restore focus/search cleanly after every modal and failed/successful mutation
+  — mobile doesn't have the web's keyboard-refocus concept, but double-check the
+  scan `TextInput` is usable again immediately after every modal closes.
+- [ ] Add pull-to-refresh/retry behavior for network interruptions — not done yet.
 
-Acceptance: daily cash lifecycle and interrupted-sale workflow match the web POS.
+Acceptance: code-complete, **not yet verified against the real backend** — same
+caveat as Phase 1. `getFacturasCuadre`'s response shape (`posCaja`, `withRNC`,
+`withoutRNC`, `sub_total`, `total_tax`, `total`) and `suspend_invoice`'s list
+shape (`id_suspension`, `customer`, `created_at`, `shopping_cart`, `total`) are
+ported directly from the web JS, unconfirmed live.
 
 #### Phase 3 — history and fiscal returns
 

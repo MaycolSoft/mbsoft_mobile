@@ -2,12 +2,16 @@
 import { create } from 'zustand/react';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // Importa AsyncStorage
+import { PosUser } from '@/screens/pos/types';
 
 
 interface StoreState {
   accessToken: string | null;
+  currentUser: PosUser | null;
   setAccessToken: (token: string|null) => void;
   removeAccessToken: () => void;
+  setCurrentUser: (user: PosUser | null) => void;
+  logout: () => void;
   toggleDarkMode: () => void;
   updateConfig: (partialConfig: Partial<AppConfig>) => void;
   [key: string]: any; // Agrega esta línea para permitir propiedades adicionales
@@ -35,10 +39,13 @@ const useStore = create<StoreState>()(
   persist(
     (set) => ({
       accessToken: null,
+      currentUser: null,
       config: initialConfig,
 
       setAccessToken: (token) => set({ accessToken: token }),
       removeAccessToken: () => set({ accessToken: null }),
+      setCurrentUser: (user) => set({ currentUser: user }),
+      logout: () => set({ accessToken: null, currentUser: null }),
       toggleDarkMode: () => set((state) => ({
         config: { ...state.config, darkMode: !state.config.darkMode }
       })),

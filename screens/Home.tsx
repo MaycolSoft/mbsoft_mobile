@@ -17,6 +17,7 @@ import Iframe      from '@/components/Iframe';
 import ProductListScreen from '@/screens/products/ProductListScreen';
 import CreateProductScreen from '@/screens/products/CreateProductScreen';
 import BusinessConfigurationScreen from '@/screens/business/BusinessConfigurationScreen';
+import PosScreen from '@/screens/pos/PosScreen';
 //////////////// Screens ////////////////
 
 
@@ -45,6 +46,14 @@ const Home: React.FC = () => {
         sceneStyle: { backgroundColor: theme.colors.background },
       }}
     >
+      <Drawer.Screen
+        name="Facturación"
+        component={PosScreen}
+        options={{
+          drawerIcon: ({ color, size }) => <MaterialIcons name="point-of-sale" size={size} color={color} />,
+        }}
+      />
+
       <Drawer.Screen
         name="Productos"
         component={ProductListScreen}
